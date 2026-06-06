@@ -497,6 +497,15 @@ textarea {
   color: var(--clr-danger);
 }
 
+/* Location name tag inside labels */
+.label-loc {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--clr-primary);
+  opacity: 0.75;
+  letter-spacing: 0.1px;
+}
+
 .form-control {
   width: 100%;
   padding: 11px 14px;

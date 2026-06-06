@@ -187,8 +187,8 @@ window.updateDynamicDetailedBlocks = function () {
 
     if (isPuistola) {
       html += `
-        <div class="detailed-block card" data-loc="${loc}" style="padding: 24px; border: 1px solid var(--clr-border); border-radius: var(--radius-md); box-shadow: none;">
-          <h3 style="margin-bottom: 20px; color: var(--clr-primary); font-size: 16px; display: flex; align-items: center; gap: 8px;">
+        <div class="detailed-block card" data-loc="${loc}">
+          <h3>
             <i class="ri-map-pin-line"></i> ${loc} Details
           </h3>
           <div class="form-grid">
@@ -196,7 +196,7 @@ window.updateDynamicDetailedBlocks = function () {
             <!-- End Time (mapped to checkOut) -->
             <div class="form-group">
               <label class="form-label">
-                <i class="ri-logout-circle-line"></i> End Time
+                <i class="ri-logout-circle-line"></i> End Time <span class="label-loc">(${loc})</span>
               </label>
               <input type="time" id="checkOut_${loc}" class="form-control d-checkout" value="${vals.checkOut}" oninput="autoCalculateHours('${loc}')" />
               <span class="field-error" id="checkOutError_${loc}"></span>
@@ -205,7 +205,7 @@ window.updateDynamicDetailedBlocks = function () {
             <!-- Start Time (mapped to checkIn) -->
             <div class="form-group">
               <label class="form-label">
-                <i class="ri-login-circle-line"></i> Start Time <span class="required">*</span>
+                <i class="ri-login-circle-line"></i> Start Time <span class="label-loc">(${loc})</span> <span class="required">*</span>
               </label>
               <div class="time-input-row">
                 <input type="time" id="checkIn_${loc}" class="form-control d-checkin" value="${vals.checkIn}" oninput="autoCalculateHours('${loc}')" />
@@ -216,7 +216,7 @@ window.updateDynamicDetailedBlocks = function () {
             <!-- Work Hours -->
             <div class="form-group">
               <label class="form-label">
-                <i class="ri-timer-2-line"></i> Work Hours <span class="required">*</span>
+                <i class="ri-timer-2-line"></i> Work Hours <span class="label-loc">(${loc})</span> <span class="required">*</span>
               </label>
               <input type="number" id="workHours_${loc}" class="form-control d-hours" step="0.5" min="0" value="${vals.hours}" required />
               <span class="field-error" id="workHoursError_${loc}"></span>
@@ -238,8 +238,8 @@ window.updateDynamicDetailedBlocks = function () {
       const isInputDisabled = skipState !== false;
 
       html += `
-        <div class="detailed-block card" data-loc="${loc}" style="padding: 24px; border: 1px solid var(--clr-border); border-radius: var(--radius-md); box-shadow: none;">
-          <h3 style="margin-bottom: 20px; color: var(--clr-primary); font-size: 16px; display: flex; align-items: center; gap: 8px;">
+        <div class="detailed-block card" data-loc="${loc}">
+          <h3>
             <i class="ri-map-pin-line"></i> ${loc} Details
           </h3>
           <div class="form-grid">
@@ -247,7 +247,7 @@ window.updateDynamicDetailedBlocks = function () {
             <!-- Check-Out -->
             <div class="form-group">
               <label class="form-label">
-                <i class="ri-logout-circle-line"></i> Check-Out Time
+                <i class="ri-logout-circle-line"></i> Check-Out Time <span class="label-loc">(${loc})</span>
               </label>
               <input type="time" id="checkOut_${loc}" class="form-control d-checkout" value="${vals.checkOut}" oninput="autoCalculateHours('${loc}')" />
               <span class="field-error" id="checkOutError_${loc}"></span>
@@ -256,7 +256,7 @@ window.updateDynamicDetailedBlocks = function () {
             <!-- Check-In -->
             <div class="form-group">
               <label class="form-label">
-                <i class="ri-login-circle-line"></i> Check-In Time <span class="required">*</span>
+                <i class="ri-login-circle-line"></i> Check-In Time <span class="label-loc">(${loc})</span> <span class="required">*</span>
               </label>
               <div class="time-input-row">
                 <input type="time" id="checkIn_${loc}" class="form-control d-checkin ${isInputDisabled ? 'disabled-input' : ''}" value="${vals.checkIn}" oninput="autoCalculateHours('${loc}')" ${isInputDisabled ? 'disabled' : ''} />
@@ -273,7 +273,7 @@ window.updateDynamicDetailedBlocks = function () {
             <!-- Work Hours -->
             <div class="form-group">
               <label class="form-label">
-                <i class="ri-timer-2-line"></i> Work Hours <span class="required">*</span>
+                <i class="ri-timer-2-line"></i> Work Hours <span class="label-loc">(${loc})</span> <span class="required">*</span>
               </label>
               <input type="number" id="workHours_${loc}" class="form-control d-hours" step="0.5" min="0" value="${vals.hours}" required />
               <span class="field-error" id="workHoursError_${loc}"></span>
@@ -282,7 +282,7 @@ window.updateDynamicDetailedBlocks = function () {
             <!-- Number of Guests -->
             <div class="form-group">
               <label class="form-label">
-                <i class="ri-group-line"></i> Number of Guests
+                <i class="ri-group-line"></i> Number of Guests <span class="label-loc">(${loc})</span>
                 <span id="guestsRequiredMark_${loc}" class="required ${isNoCheckInActive ? 'hidden' : ''}">*</span>
               </label>
               <input type="number" id="guests_${loc}" class="form-control d-guests" min="0" placeholder="e.g. 2" value="${vals.guests}" />
