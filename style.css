@@ -458,6 +458,21 @@ textarea {
   margin-top: 20px;
 }
 
+/* Dashboard quick-action row */
+.dashboard-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 460px) {
+  .dashboard-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* ── Form ── */
 .form-card {
   padding: 32px;
