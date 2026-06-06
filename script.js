@@ -1,0 +1,1113 @@
+// ============================================================
+//  WorkTrack — script.js
+//  Firebase Firestore v11 · Real-time · CRUD · Export
+// ============================================================
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+// ── Firebase Init ──────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAnBX2gLAo9aZRC8suyRNICRjoOUK4gp-4",
+  authDomain: "real-time-prasiddha.firebaseapp.com",
+  databaseURL: "https://real-time-prasiddha-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "real-time-prasiddha",
+  storageBucket: "real-time-prasiddha.firebasestorage.app",
+  messagingSenderId: "713785938695",
+  appId: "1:713785938695:web:a9aa397c252a9eb9e9eba2"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ── State ──────────────────────────────────────────────────
+let allRecords = [];   // raw Firestore docs
+let filteredRecords = [];  // after applying filters
+let pendingDeleteId = null; // doc id waiting for confirm
+let allActivities = []; // activity logs
+
+// ── Activity Helper ───────────────────────────────────────
+async function logActivity(action, message) {
+  try {
+    await addDoc(collection(db, "activityLogs"), {
+      action,
+      message,
+      timestamp: serverTimestamp()
+    });
+  } catch(e) {
+    console.error("Failed to log activity", e);
+  }
+}
+
+// ── DOM helpers ───────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const el = (tag, cls, html) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html) e.innerHTML = html;
+  return e;
+};
+
+// ── Page Init ─────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  setDefaultDate();
+  setDefaultCheckIn();
+  initTheme();
+  subscribeFirestore();
+});
+
+// ── Set tomorrow's date as default ────────────────────────
+function setDefaultDate() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  $("date").value = toISODate(tomorrow);
+  
+  if ($("qDate")) {
+    $("qDate").value = toISODate(new Date());
+  }
+}
+
+// ── Set default check-in to 15:00 (3:00 PM) ──────────────
+function setDefaultCheckIn() {
+  $("checkIn").value = "15:00";
+  autoCalculateHours();
+}
+
+function toISODate(d) {
+  return d.toISOString().split("T")[0];
+}
+
+// ── Theme ─────────────────────────────────────────────────
+function initTheme() {
+  const saved = localStorage.getItem("wt-theme") || "light";
+  applyTheme(saved);
+}
+
+window.toggleTheme = function () {
+  const current = document.documentElement.getAttribute("data-theme");
+  applyTheme(current === "dark" ? "light" : "dark");
+};
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("wt-theme", theme);
+  const isDark = theme === "dark";
+  const icon = isDark ? "ri-sun-line" : "ri-moon-line";
+  const label = isDark ? "Light Mode" : "Dark Mode";
+  ["themeIcon", "themeIconMobile"].forEach(id => {
+    const el = $(id);
+    if (el) { el.className = icon; }
+  });
+  const lbl = $("themeLabel");
+  if (lbl) lbl.textContent = label;
+}
+
+// ── Sidebar (mobile) ──────────────────────────────────────
+window.toggleSidebar = function () {
+  $("sidebar").classList.toggle("open");
+  $("sidebarOverlay").classList.toggle("active");
+};
+
+// ── Section Navigation ────────────────────────────────────
+window.showSection = function (sectionId, navEl) {
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  $("section-" + sectionId).classList.add("active");
+  if (navEl) navEl.classList.add("active");
+  // close mobile sidebar
+  $("sidebar").classList.remove("open");
+  $("sidebarOverlay").classList.remove("active");
+};
+
+// ── Form Tabs ─────────────────────────────────────────────
+window.switchFormTab = function (tab) {
+  const dForm = $("detailedFormWrapper");
+  const qForm = $("quickFormWrapper");
+  const dTab = $("tabDetailed");
+  const qTab = $("tabQuick");
+
+  if (tab === "quick") {
+    dForm.classList.add("hidden");
+    qForm.classList.remove("hidden");
+    dTab.className = "btn btn-ghost";
+    qTab.className = "btn btn-primary";
+  } else {
+    dForm.classList.remove("hidden");
+    qForm.classList.add("hidden");
+    dTab.className = "btn btn-primary";
+    qTab.className = "btn btn-ghost";
+  }
+};
+
+// ── "Check-in Not Provided / No Check In" toggle ──────────
+window.checkInSkipStates = {}; // Track state per location
+
+window.updateDynamicDetailedBlocks = function () {
+  const container = $("dynamicDetailedContainer");
+  const checkboxes = document.querySelectorAll('input[name="dLoc"]:checked');
+  
+  if (checkboxes.length === 0) {
+    container.innerHTML = "";
+    return;
+  }
+
+  // Preserve existing values
+  const existingValues = {};
+  container.querySelectorAll('.detailed-block').forEach(block => {
+    const loc = block.dataset.loc;
+    existingValues[loc] = {
+      checkOut: block.querySelector('.d-checkout').value,
+      checkIn: block.querySelector('.d-checkin').value,
+      hours: block.querySelector('.d-hours').value,
+      guests: block.querySelector('.d-guests').value,
+    };
+  });
+
+  let html = "";
+  checkboxes.forEach(cb => {
+    const loc = cb.value;
+    const isPuistola = loc === "House Cleaning (Puistola)";
+    const vals = existingValues[loc] || { 
+      checkOut: isPuistola ? "20:30" : "", 
+      checkIn: isPuistola ? "18:00" : "15:00", 
+      hours: isPuistola ? "2.5" : "2", 
+      guests: "" 
+    };
+
+    if (isPuistola) {
+      html += `
+        <div class="detailed-block card" data-loc="${loc}" style="padding: 24px; border: 1px solid var(--clr-border); border-radius: var(--radius-md); box-shadow: none;">
+          <h3 style="margin-bottom: 20px; color: var(--clr-primary); font-size: 16px; display: flex; align-items: center; gap: 8px;">
+            <i class="ri-map-pin-line"></i> ${loc} Details
+          </h3>
+          <div class="form-grid">
+            
+            <!-- End Time (mapped to checkOut) -->
+            <div class="form-group">
+              <label class="form-label">
+                <i class="ri-logout-circle-line"></i> End Time
+              </label>
+              <input type="time" id="checkOut_${loc}" class="form-control d-checkout" value="${vals.checkOut}" oninput="autoCalculateHours('${loc}')" />
+              <span class="field-error" id="checkOutError_${loc}"></span>
+            </div>
+
+            <!-- Start Time (mapped to checkIn) -->
+            <div class="form-group">
+              <label class="form-label">
+                <i class="ri-login-circle-line"></i> Start Time <span class="required">*</span>
+              </label>
+              <div class="time-input-row">
+                <input type="time" id="checkIn_${loc}" class="form-control d-checkin" value="${vals.checkIn}" oninput="autoCalculateHours('${loc}')" />
+              </div>
+              <span class="field-error" id="checkInError_${loc}"></span>
+            </div>
+
+            <!-- Work Hours -->
+            <div class="form-group">
+              <label class="form-label">
+                <i class="ri-timer-2-line"></i> Work Hours <span class="required">*</span>
+              </label>
+              <input type="number" id="workHours_${loc}" class="form-control d-hours" step="0.5" min="0" value="${vals.hours}" required />
+              <span class="field-error" id="workHoursError_${loc}"></span>
+            </div>
+            
+            <input type="hidden" id="guests_${loc}" class="d-guests" value="" />
+          </div>
+        </div>
+      `;
+    } else {
+      // Initialize state if not present
+      if (window.checkInSkipStates[loc] === undefined) {
+        window.checkInSkipStates[loc] = false;
+      }
+      const skipState = window.checkInSkipStates[loc];
+      
+      const isNoCheckInActive = skipState === "no_check_in";
+      const isNotProvidedActive = skipState === "not_provided";
+      const isInputDisabled = skipState !== false;
+
+      html += `
+        <div class="detailed-block card" data-loc="${loc}" style="padding: 24px; border: 1px solid var(--clr-border); border-radius: var(--radius-md); box-shadow: none;">
+          <h3 style="margin-bottom: 20px; color: var(--clr-primary); font-size: 16px; display: flex; align-items: center; gap: 8px;">
+            <i class="ri-map-pin-line"></i> ${loc} Details
+          </h3>
+          <div class="form-grid">
+            
+            <!-- Check-Out -->
+            <div class="form-group">
+              <label class="form-label">
+                <i class="ri-logout-circle-line"></i> Check-Out Time
+              </label>
+              <input type="time" id="checkOut_${loc}" class="form-control d-checkout" value="${vals.checkOut}" oninput="autoCalculateHours('${loc}')" />
+              <span class="field-error" id="checkOutError_${loc}"></span>
+            </div>
+
+            <!-- Check-In -->
+            <div class="form-group">
+              <label class="form-label">
+                <i class="ri-login-circle-line"></i> Check-In Time <span class="required">*</span>
+              </label>
+              <div class="time-input-row">
+                <input type="time" id="checkIn_${loc}" class="form-control d-checkin ${isInputDisabled ? 'disabled-input' : ''}" value="${vals.checkIn}" oninput="autoCalculateHours('${loc}')" ${isInputDisabled ? 'disabled' : ''} />
+                <button type="button" class="btn-no-checkin ${isNoCheckInActive ? 'active' : ''}" id="noCheckInBtn_${loc}" onclick="toggleNoCheckIn('${loc}', 'no_check_in')">
+                  <i class="${isNoCheckInActive ? 'ri-close-circle-fill' : 'ri-close-circle-line'}"></i> No Check In
+                </button>
+                <button type="button" class="btn-no-checkin ${isNotProvidedActive ? 'active' : ''}" id="notProvidedBtn_${loc}" onclick="toggleNoCheckIn('${loc}', 'not_provided')">
+                  <i class="ri-question-line"></i> Not Provided
+                </button>
+              </div>
+              <span class="field-error" id="checkInError_${loc}"></span>
+            </div>
+
+            <!-- Work Hours -->
+            <div class="form-group">
+              <label class="form-label">
+                <i class="ri-timer-2-line"></i> Work Hours <span class="required">*</span>
+              </label>
+              <input type="number" id="workHours_${loc}" class="form-control d-hours" step="0.5" min="0" value="${vals.hours}" required />
+              <span class="field-error" id="workHoursError_${loc}"></span>
+            </div>
+
+            <!-- Number of Guests -->
+            <div class="form-group">
+              <label class="form-label">
+                <i class="ri-group-line"></i> Number of Guests
+                <span id="guestsRequiredMark_${loc}" class="required ${isNoCheckInActive ? 'hidden' : ''}">*</span>
+              </label>
+              <input type="number" id="guests_${loc}" class="form-control d-guests" min="0" placeholder="e.g. 2" value="${vals.guests}" />
+              <span class="field-error" id="guestsError_${loc}"></span>
+            </div>
+
+          </div>
+        </div>
+      `;
+    }
+  });
+  
+  container.innerHTML = html;
+};
+
+window.toggleNoCheckIn = function (loc, stateType) {
+  const btnNoCheckIn = $(`noCheckInBtn_${loc}`);
+  const btnNotProvided = $(`notProvidedBtn_${loc}`);
+  const input = $(`checkIn_${loc}`);
+  const reqMark = $(`guestsRequiredMark_${loc}`);
+  const guestsError = $(`guestsError_${loc}`);
+  const guestsInput = $(`guests_${loc}`);
+
+  if (!btnNoCheckIn) return; // safeguard
+
+  const currentState = window.checkInSkipStates[loc];
+
+  // If clicking the currently active state, toggle it off
+  if (currentState === stateType) {
+    window.checkInSkipStates[loc] = false;
+    input.disabled = false;
+    input.classList.remove("disabled-input");
+
+    btnNoCheckIn.classList.remove("active");
+    btnNoCheckIn.innerHTML = '<i class="ri-close-circle-line"></i> No Check In';
+
+    btnNotProvided.classList.remove("active");
+    btnNotProvided.innerHTML = '<i class="ri-question-line"></i> Not Provided';
+
+    input.value = "15:00";
+    if(reqMark) reqMark.classList.remove("hidden");
+  } else {
+    // Activate the new state
+    window.checkInSkipStates[loc] = stateType;
+    input.disabled = true;
+    input.classList.add("disabled-input");
+    input.value = "";
+    input.classList.remove("error");
+    
+    if(reqMark) reqMark.classList.add("hidden");
+    if(guestsError) guestsError.textContent = "";
+    if(guestsInput) guestsInput.classList.remove("error");
+
+    if (stateType === "no_check_in") {
+      btnNoCheckIn.classList.add("active");
+      btnNoCheckIn.innerHTML = '<i class="ri-close-circle-fill"></i> No Check In';
+      btnNotProvided.classList.remove("active");
+      btnNotProvided.innerHTML = '<i class="ri-question-line"></i> Not Provided';
+    } else {
+      btnNotProvided.classList.add("active");
+      btnNotProvided.innerHTML = '<i class="ri-check-line"></i> Not Provided';
+      btnNoCheckIn.classList.remove("active");
+      btnNoCheckIn.innerHTML = '<i class="ri-close-circle-line"></i> No Check In';
+      if(reqMark) reqMark.classList.remove("hidden");
+    }
+  }
+  autoCalculateHours(loc);
+};
+
+// ── Auto-calculate hours ───────────────────────────────────
+window.autoCalculateHours = function (loc) {
+  const ciInput = $(`checkIn_${loc}`);
+  const coInput = $(`checkOut_${loc}`);
+  const hoursInput = $(`workHours_${loc}`);
+
+  if (!ciInput || !coInput || !hoursInput) return;
+
+  const ci = ciInput.value;
+  const co = coInput.value;
+  const skipState = window.checkInSkipStates[loc];
+
+  // Don't calculate if we don't have valid times
+  if (skipState || !ci || !co) return;
+
+  const [ciH, ciM] = ci.split(":").map(Number);
+  const [coH, coM] = co.split(":").map(Number);
+  let mins = (coH * 60 + coM) - (ciH * 60 + ciM);
+
+  // Auto-fill work hours if valid
+  if (mins > 0) {
+    const hrs = (mins / 60).toFixed(2);
+    hoursInput.value = parseFloat(hrs);
+  }
+}
+
+function renderActivitiesTable(activities) {
+  const tbody = $("activitiesTableBody");
+  if(!tbody) return;
+
+  if (!activities.length) {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--clr-text-muted)">No activities recorded yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = activities.map(a => {
+    const timeStr = a.timestamp && a.timestamp.toDate ? a.timestamp.toDate().toLocaleString() : "Just now";
+    let actionBadge = "";
+    if (a.action === "ADDED") actionBadge = '<span class="location-badge" style="background:var(--clr-success);color:white">Added</span>';
+    else if (a.action === "EDITED") actionBadge = '<span class="location-badge" style="background:var(--clr-primary);color:white">Edited</span>';
+    else if (a.action === "DELETED") actionBadge = '<span class="location-badge" style="background:var(--clr-danger);color:white">Deleted</span>';
+
+    return `
+      <tr>
+        <td style="white-space:nowrap;color:var(--clr-text-muted);font-size:0.875rem;">${timeStr}</td>
+        <td>${actionBadge}</td>
+        <td>${escHtml(a.message || "")}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+// ── Form Validation ────────────────────────────────────────
+function validateForm() {
+  let valid = true;
+
+  const dateInput = $("date");
+  const dateErr = $("dateError");
+  if (!dateInput.value) {
+    dateErr.textContent = "Please pick a date.";
+    dateInput.classList.add("error");
+    valid = false;
+  } else {
+    dateErr.textContent = "";
+    dateInput.classList.remove("error");
+  }
+
+  const checkboxes = document.querySelectorAll('input[name="dLoc"]:checked');
+  const locErr = $("locationError");
+  if (checkboxes.length === 0) {
+    locErr.textContent = "Please select at least one location.";
+    valid = false;
+  } else {
+    locErr.textContent = "";
+  }
+
+  // Validate dynamic blocks
+  checkboxes.forEach(cb => {
+    const loc = cb.value;
+    const skipState = window.checkInSkipStates[loc] || false;
+
+    // Work Hours (always required)
+    const hours = $(`workHours_${loc}`);
+    const hoursErr = $(`workHoursError_${loc}`);
+    if (!hours.value || parseFloat(hours.value) <= 0) {
+      if(hoursErr) hoursErr.textContent = "Please enter valid work hours.";
+      if(hours) hours.classList.add("error");
+      valid = false;
+    } else {
+      if(hoursErr) hoursErr.textContent = "";
+      if(hours) hours.classList.remove("error");
+    }
+
+    // Check-In (required UNLESS skipped)
+    if (!skipState) {
+      const ci = $(`checkIn_${loc}`);
+      const ciErr = $(`checkInError_${loc}`);
+      if (!ci || !ci.value) {
+        if(ciErr) ciErr.textContent = "Please enter check-in time, or mark it as skipped.";
+        if(ci) ci.classList.add("error");
+        valid = false;
+      } else {
+        if(ciErr) ciErr.textContent = "";
+        if(ci) ci.classList.remove("error");
+      }
+
+      // Guests (required if check-in not skipped)
+      const guests = $(`guests_${loc}`);
+      const guestsErr = $(`guestsError_${loc}`);
+      if (!guests || !guests.value || parseInt(guests.value) <= 0) {
+        if(guestsErr) guestsErr.textContent = "Please enter number of guests.";
+        if(guests) guests.classList.add("error");
+        valid = false;
+      } else {
+        if(guestsErr) guestsErr.textContent = "";
+        if(guests) guests.classList.remove("error");
+      }
+    }
+  });
+
+  return valid;
+}
+
+// ── Save / Update Entry ────────────────────────────────────
+window.handleFormSubmit = async function (e) {
+  e.preventDefault();
+  if (!validateForm()) return;
+
+  const btn = $("submitBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Saving…`;
+
+  const dateVal = $("date").value;
+  const notesVal = $("notes").value.trim();
+  const checkboxes = document.querySelectorAll('input[name="dLoc"]:checked');
+  const editId = $("editDocId").value;
+
+  const submissions = [];
+  checkboxes.forEach(cb => {
+    const loc = cb.value;
+    const skipState = window.checkInSkipStates[loc] || false;
+    const totalHours = parseFloat($(`workHours_${loc}`).value) || 0;
+    
+    submissions.push({
+      location: loc,
+      date: dateVal,
+      checkIn: skipState ? "" : $(`checkIn_${loc}`).value,
+      checkInSkipState: skipState,
+      checkOut: $(`checkOut_${loc}`).value || "",
+      totalHours: totalHours,
+      guests: parseInt($(`guests_${loc}`).value) || "",
+      note: notesVal,
+    });
+  });
+
+  try {
+    if (editId && submissions.length === 1) {
+      // UPDATE (only supports single record edit)
+      const data = submissions[0];
+      await updateDoc(doc(db, "workHours", editId), { ...data, updatedAt: serverTimestamp() });
+      logActivity("EDITED", `Updated work entry for ${data.location}`);
+      showToast("Entry updated successfully!", "success");
+      cancelEdit();
+    } else {
+      // ADD MULTIPLE
+      const promises = submissions.map(async (data) => {
+        await addDoc(collection(db, "workHours"), { ...data, createdAt: serverTimestamp() });
+        logActivity("ADDED", `Added new work entry for ${data.location}`);
+      });
+      await Promise.all(promises);
+      showToast(`Saved ${submissions.length} Entry(s) successfully!`, "success");
+      resetForm();
+    }
+  } catch (err) {
+    console.error(err);
+    showToast("Error saving entry. Check console.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="ri-save-line"></i> <span id="submitBtnText">${editId ? "Update Entry" : "Save Entry"}</span>`;
+  }
+};
+
+// ── Quick Add Submit ───────────────────────────────────────
+window.updateDynamicHours = function () {
+  const container = $("dynamicHoursContainer");
+  const checkboxes = document.querySelectorAll('input[name="qLoc"]:checked');
+  
+  if (checkboxes.length === 0) {
+    container.innerHTML = "";
+    return;
+  }
+
+  // Preserve existing values
+  const existingValues = {};
+  container.querySelectorAll('input.q-dynamic-hours').forEach(input => {
+    existingValues[input.dataset.loc] = input.value;
+  });
+
+  let html = "";
+  checkboxes.forEach(cb => {
+    const loc = cb.value;
+    const isPuistola = loc === "House Cleaning (Puistola)";
+    const val = existingValues[loc] || (isPuistola ? "2.5" : "2"); // Default to 2.5 or 2
+    html += `
+      <div class="form-group">
+        <label class="form-label">
+          <i class="ri-timer-2-line"></i> Work Hours for ${loc} <span class="required">*</span>
+        </label>
+        <input type="number" class="form-control q-dynamic-hours" data-loc="${loc}" step="0.5" min="0" value="${val}" required />
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+};
+
+window.handleQuickSubmit = async function (e) {
+  e.preventDefault();
+
+  const checkboxes = document.querySelectorAll('input[name="qLoc"]:checked');
+  if (checkboxes.length === 0) {
+    $("qLocationError").textContent = "Select at least one location.";
+    return;
+  } else {
+    $("qLocationError").textContent = "";
+  }
+
+  const date = $("qDate").value;
+  if (!date) { $("qDate").classList.add("error"); return; } else { $("qDate").classList.remove("error"); }
+
+  const hoursInputs = document.querySelectorAll('.q-dynamic-hours');
+  let hasError = false;
+  const submissions = [];
+
+  hoursInputs.forEach(input => {
+    const hrs = parseFloat(input.value);
+    if (isNaN(hrs) || hrs <= 0) {
+      input.classList.add("error");
+      hasError = true;
+    } else {
+      input.classList.remove("error");
+      submissions.push({ loc: input.dataset.loc, hrs });
+    }
+  });
+
+  if (hasError) return;
+
+  const btn = $("qSubmitBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Adding…`;
+
+  try {
+    const promises = submissions.map(async (sub) => {
+      const data = {
+        location: sub.loc,
+        date: date,
+        checkIn: "",
+        checkInSkipState: "not_provided",
+        checkOut: "",
+        totalHours: sub.hrs,
+        guests: "",
+        note: $("qNotes").value.trim(),
+      };
+      await addDoc(collection(db, "workHours"), { ...data, createdAt: serverTimestamp() });
+      logActivity("ADDED", `Quick added working hour for ${sub.loc}`);
+    });
+
+    await Promise.all(promises);
+
+    showToast(`Saved ${submissions.length} Working Hour${submissions.length > 1 ? 's' : ''}!`, "success");
+    $("quickEntryForm").reset();
+    updateDynamicHours(); // Clear container
+    setDefaultDate();
+  } catch (err) {
+    console.error(err);
+    showToast("Error saving working hours.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="ri-flashlight-line"></i> Add Working Hour`;
+  }
+};
+
+function resetForm() {
+  $("workEntryForm").reset();
+  setDefaultDate();
+  window.checkInSkipStates = {};
+  updateDynamicDetailedBlocks();
+  clearFieldErrors();
+}
+
+function clearFieldErrors() {
+  ["locationError", "dateError", "checkInError", "checkOutError", "workHoursError", "guestsError"].forEach(id => {
+    const el = $(id); if (el) el.textContent = "";
+  });
+  ["location", "date", "checkIn", "checkOut", "workHours", "guests"].forEach(id => {
+    const el = $(id); if (el) el.classList.remove("error");
+  });
+}
+
+// ── Edit ──────────────────────────────────────────────────
+window.editEntry = function (docId) {
+  const rec = allRecords.find(r => r.id === docId);
+  if (!rec) return;
+
+  $("date").value = rec.date;
+  $("notes").value = rec.note || "";
+  $("editDocId").value = docId;
+
+  const checkboxes = document.querySelectorAll('input[name="dLoc"]');
+  checkboxes.forEach(cb => {
+    cb.checked = (cb.value === rec.location);
+  });
+
+  window.checkInSkipStates = {};
+  window.checkInSkipStates[rec.location] = rec.checkInSkipState || false;
+
+  updateDynamicDetailedBlocks();
+
+  const loc = rec.location;
+  if ($(`checkOut_${loc}`)) $(`checkOut_${loc}`).value = rec.checkOut || "";
+  if ($(`workHours_${loc}`)) $(`workHours_${loc}`).value = rec.totalHours || 2;
+  if ($(`guests_${loc}`)) $(`guests_${loc}`).value = rec.guests || "";
+  if ($(`checkIn_${loc}`) && rec.checkInSkipState === false) {
+    $(`checkIn_${loc}`).value = rec.checkIn || "15:00";
+  }
+
+  // Switch to Detailed Tab if not already on it
+  switchFormTab("detailed");
+
+  $("submitBtnText").textContent = "Update Entry";
+  $("cancelEditBtn").style.display = "inline-flex";
+  $("formSectionTitle").textContent = "Edit Entry";
+
+  showSection("add-entry", $("nav-add"));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  clearFieldErrors();
+};
+
+window.cancelEdit = function () {
+  $("editDocId").value = "";
+  $("submitBtnText").textContent = "Save Entry";
+  $("cancelEditBtn").style.display = "none";
+  $("formSectionTitle").textContent = "Add Entry";
+  window.checkInSkipStates = {};
+  resetForm();
+};
+
+// ── Delete ─────────────────────────────────────────────────
+window.deleteEntry = function (docId) {
+  pendingDeleteId = docId;
+  $("confirmOverlay").classList.remove("hidden");
+};
+
+window.closeConfirm = function () {
+  pendingDeleteId = null;
+  $("confirmOverlay").classList.add("hidden");
+};
+
+window.confirmDelete = async function () {
+  if (!pendingDeleteId) return;
+  const btn = $("confirmDeleteBtn");
+  btn.disabled = true;
+  btn.textContent = "Deleting…";
+  try {
+    // Attempt to get the location of the record before deleting so we can log it
+    const rec = allRecords.find(r => r.id === pendingDeleteId);
+    await deleteDoc(doc(db, "workHours", pendingDeleteId));
+    logActivity("DELETED", `Deleted work entry${rec ? ' for ' + rec.location : ''}`);
+    showToast("Entry deleted.", "warning");
+  } catch (err) {
+    console.error(err);
+    showToast("Error deleting entry.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Delete";
+    closeConfirm();
+  }
+};
+
+// ── Firestore Real-Time Listener ───────────────────────────
+function subscribeFirestore() {
+  const q = query(collection(db, "workHours"), orderBy("date", "desc"));
+
+  onSnapshot(q, snapshot => {
+    allRecords = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    applyFilters();
+    updateStats(allRecords);
+    renderThisMonthTable(allRecords);
+    renderTodayTable(allRecords);
+    renderTomorrowTable(allRecords);
+    // hide spinners
+    $("dashboardSpinner").classList.add("hidden");
+    $("recordsSpinner").classList.add("hidden");
+  }, err => {
+    console.error("Firestore error:", err);
+    showToast("Could not connect to Firestore.", "error");
+    $("dashboardSpinner").classList.add("hidden");
+    $("recordsSpinner").classList.add("hidden");
+  });
+}
+
+function subscribeActivities() {
+  const q = query(collection(db, "activityLogs"), orderBy("timestamp", "desc"));
+  onSnapshot(q, snapshot => {
+    allActivities = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderActivitiesTable(allActivities);
+  });
+}
+
+// ── Stats ─────────────────────────────────────────────────
+function updateStats(records) {
+  const byLoc = loc => records.filter(r => r.location === loc).reduce((s, r) => s + (r.totalHours || 0), 0);
+
+  const now = new Date();
+
+  // Calculate this month's hours
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const isoMonthStart = toISODate(startOfMonth);
+
+  const thisMonthHrs = records
+    .filter(r => r.date >= isoMonthStart && r.date <= toISODate(now))
+    .reduce((s, r) => s + (r.totalHours || 0), 0);
+
+  // Calculate this week's hours
+  const day = now.getDay() || 7; // Convert Sun=0 to 7
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - day + 1);
+  startOfWeek.setHours(0, 0, 0, 0);
+  const isoWeekStart = toISODate(startOfWeek);
+
+  const thisWeekHrs = records
+    .filter(r => r.date >= isoWeekStart && r.date <= toISODate(now))
+    .reduce((s, r) => s + (r.totalHours || 0), 0);
+
+  if ($("statThisMonthHours")) $("statThisMonthHours").textContent = thisMonthHrs.toFixed(1);
+  if ($("statThisWeekHours")) $("statThisWeekHours").textContent = thisWeekHrs.toFixed(1);
+
+  $("statKotkansiipi").textContent = byLoc("Kotkansiipi").toFixed(1) + "h";
+  $("statRautkallionkatu").textContent = byLoc("Rautkallionkatu").toFixed(1) + "h";
+  $("statKakoisvayla").textContent = byLoc("Kakoisvayla").toFixed(1) + "h";
+  $("statMayavatie").textContent = byLoc("Mayavatie").toFixed(1) + "h";
+}
+
+// ── This Month Table ──────────────────────────────────────
+function renderThisMonthTable(records) {
+  const empty = $("thisMonthEmpty");
+  const wrapper = $("thisMonthTableWrapper");
+  const tbody = $("thisMonthTableBody");
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const isoMonthStart = toISODate(startOfMonth);
+
+  // Format month like "June"
+  const formattedMonth = now.toLocaleDateString('en-GB', { month: 'long' });
+  $("thisMonthTitle").innerHTML = `<i class="ri-calendar-line"></i> This month (${formattedMonth}) work hours`;
+
+  const thisMonthRecords = records.filter(r => r.date >= isoMonthStart && r.date <= toISODate(now));
+
+  if (!thisMonthRecords.length) {
+    empty.classList.remove("hidden");
+    wrapper.classList.add("hidden");
+    return;
+  }
+  
+  empty.classList.add("hidden");
+  wrapper.classList.remove("hidden");
+
+  const totalHours = thisMonthRecords.reduce((sum, r) => sum + (parseFloat(r.totalHours) || 0), 0);
+  const rowsHtml = thisMonthRecords.map(r => `
+    <tr>
+      <td>${formatDate(r.date)}</td>
+      <td><span class="location-badge badge-${r.location.replace(/[^a-zA-Z0-9]/g, '')}">${r.location}</span></td>
+      <td>${r.checkIn ? r.checkIn : (r.checkInSkipState === 'no_check_in' ? '<span style="color:var(--clr-text-muted);font-style:italic">No check-in</span>' : (r.checkInSkipState === 'not_provided' ? '<span style="color:var(--clr-text-muted);font-style:italic">Not provided</span>' : '<span style="color:var(--clr-text-muted)">—</span>'))}</td>
+      <td>${r.checkOut ? r.checkOut : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+      <td><span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span></td>
+      <td>${r.guests || '—'}</td>
+      <td>${r.note ? escHtml(r.note) : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+    </tr>
+  `).join("");
+  
+  tbody.innerHTML = rowsHtml + `
+    <tr style="background: var(--clr-surface-2); font-weight: 700;">
+      <td colspan="4" style="text-align: right;">Total Working Hours:</td>
+      <td><span class="hours-pill" style="background: var(--clr-primary); color: white;">${totalHours.toFixed(2)}h</span></td>
+      <td colspan="2"></td>
+    </tr>
+  `;
+}
+// ── Today's Work Table ─────────────────────────────────
+function renderTodayTable(records) {
+  const todayDate = new Date();
+  const isoToday = toISODate(todayDate);
+
+  // Format date like "7 June"
+  const formattedDate = todayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+
+  const todayRecords = records.filter(r => r.date === isoToday);
+
+  $("todayTitle").innerHTML = `<i class="ri-calendar-event-line"></i> Today (${formattedDate}) Work List`;
+
+  const empty = $("todayEmpty");
+  const wrapper = $("todayTableWrapper");
+  const tbody = $("todayTableBody");
+
+  if (!todayRecords.length) {
+    empty.classList.remove("hidden");
+    wrapper.classList.add("hidden");
+    return;
+  }
+
+  empty.classList.add("hidden");
+  wrapper.classList.remove("hidden");
+
+  const totalHours = todayRecords.reduce((sum, r) => sum + (parseFloat(r.totalHours) || 0), 0);
+  const rowsHtml = todayRecords.map(r => `
+    <tr>
+      <td><span class="location-badge badge-${r.location.replace(/[^a-zA-Z0-9]/g, '')}">${r.location}</span></td>
+      <td>${r.checkIn ? r.checkIn : (r.checkInSkipState === 'no_check_in' ? '<span style="color:var(--clr-text-muted);font-style:italic">No check-in</span>' : (r.checkInSkipState === 'not_provided' ? '<span style="color:var(--clr-text-muted);font-style:italic">Not provided</span>' : '<span style="color:var(--clr-text-muted)">—</span>'))}</td>
+      <td>${r.checkOut ? r.checkOut : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+      <td><span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span></td>
+      <td>${r.guests || '—'}</td>
+      <td>${r.note ? escHtml(r.note) : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+    </tr>
+  `).join("");
+
+  tbody.innerHTML = rowsHtml + `
+    <tr style="background: var(--clr-surface-2); font-weight: 700;">
+      <td colspan="3" style="text-align: right;">Total Working Hours:</td>
+      <td><span class="hours-pill" style="background: var(--clr-primary); color: white;">${totalHours.toFixed(2)}h</span></td>
+      <td colspan="2"></td>
+    </tr>
+  `;
+}
+
+// ── Tomorrow's Work Table ─────────────────────────────────
+function renderTomorrowTable(records) {
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const isoTomorrow = toISODate(tomorrowDate);
+
+  // Format date like "7 June"
+  const formattedDate = tomorrowDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+
+  const tmrRecords = records.filter(r => r.date === isoTomorrow);
+
+  $("tomorrowTitle").innerHTML = `<i class="ri-calendar-todo-line"></i> Tomorrow (${formattedDate}) Work List`;
+
+  const empty = $("tomorrowEmpty");
+  const wrapper = $("tomorrowTableWrapper");
+  const tbody = $("tomorrowTableBody");
+
+  if (!tmrRecords.length) {
+    empty.classList.remove("hidden");
+    wrapper.classList.add("hidden");
+    return;
+  }
+
+  empty.classList.add("hidden");
+  wrapper.classList.remove("hidden");
+
+  const totalHours = tmrRecords.reduce((sum, r) => sum + (parseFloat(r.totalHours) || 0), 0);
+  const rowsHtml = tmrRecords.map(r => `
+    <tr>
+      <td><span class="location-badge badge-${r.location.replace(/[^a-zA-Z0-9]/g, '')}">${r.location}</span></td>
+      <td>${r.checkIn ? r.checkIn : (r.checkInSkipState === 'no_check_in' ? '<span style="color:var(--clr-text-muted);font-style:italic">No check-in</span>' : (r.checkInSkipState === 'not_provided' ? '<span style="color:var(--clr-text-muted);font-style:italic">Not provided</span>' : '<span style="color:var(--clr-text-muted)">—</span>'))}</td>
+      <td>${r.checkOut ? r.checkOut : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+      <td><span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span></td>
+      <td>${r.guests || '—'}</td>
+      <td>${r.note ? escHtml(r.note) : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+    </tr>
+  `).join("");
+  
+  tbody.innerHTML = rowsHtml + `
+    <tr style="background: var(--clr-surface-2); font-weight: 700;">
+      <td colspan="3" style="text-align: right;">Total Working Hours:</td>
+      <td><span class="hours-pill" style="background: var(--clr-primary); color: white;">${totalHours.toFixed(2)}h</span></td>
+      <td colspan="2"></td>
+    </tr>
+  `;
+}
+
+// ── Filters ────────────────────────────────────────────────
+window.applyFilters = function () {
+  const loc = $("filterLocation").value;
+  const month = $("filterMonth").value;    // "YYYY-MM"
+  const startDate = $("filterStartDate").value;
+  const endDate = $("filterEndDate").value;
+  const noteQ = $("filterNotes").value.trim().toLowerCase();
+
+  filteredRecords = allRecords.filter(r => {
+    if (loc && r.location !== loc) return false;
+    if (month && !r.date?.startsWith(month)) return false;
+    if (startDate && r.date < startDate) return false;
+    if (endDate && r.date > endDate) return false;
+    if (noteQ && !r.note?.toLowerCase().includes(noteQ)) return false;
+    return true;
+  });
+
+  renderRecordsTable(filteredRecords);
+};
+
+window.clearFilters = function () {
+  ["filterLocation", "filterMonth", "filterStartDate", "filterEndDate", "filterNotes"]
+    .forEach(id => { const el = $(id); if (el) el.value = ""; });
+  applyFilters();
+};
+
+// ── Records Table ─────────────────────────────────────────
+function renderRecordsTable(records) {
+  const spinner = $("recordsSpinner");
+  const empty = $("recordsEmpty");
+  const wrapper = $("recordsTableWrapper");
+  const tbody = $("recordsTableBody");
+
+  spinner.classList.add("hidden");
+
+  if (!records.length) {
+    empty.classList.remove("hidden");
+    wrapper.classList.add("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+  wrapper.classList.remove("hidden");
+
+  const totalHours = records.reduce((sum, r) => sum + (parseFloat(r.totalHours) || 0), 0);
+  const rowsHtml = records.map(r => `
+    <tr>
+      <td>${formatDate(r.date)}</td>
+      <td><span class="location-badge badge-${r.location.replace(/[^a-zA-Z0-9]/g, '')}">${r.location}</span></td>
+      <td>${r.checkIn ? r.checkIn : (r.checkInSkipState === 'no_check_in' ? '<span style="color:var(--clr-text-muted);font-style:italic">No check-in</span>' : (r.checkInSkipState === 'not_provided' ? '<span style="color:var(--clr-text-muted);font-style:italic">Not provided</span>' : '<span style="color:var(--clr-text-muted)">—</span>'))}</td>
+      <td>${r.checkOut ? r.checkOut : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+      <td><span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span></td>
+      <td>${r.guests || '—'}</td>
+      <td style="max-width:200px;word-break:break-word">${r.note ? escHtml(r.note) : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+      <td>
+        <div class="actions-cell">
+          <button class="btn btn-edit" onclick="editEntry('${r.id}')"><i class="ri-edit-line"></i> Edit</button>
+          <button class="btn btn-del"  onclick="deleteEntry('${r.id}')"><i class="ri-delete-bin-6-line"></i> Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+
+  tbody.innerHTML = rowsHtml + `
+    <tr style="background: var(--clr-surface-2); font-weight: 700;">
+      <td colspan="4" style="text-align: right;">Total Working Hours:</td>
+      <td><span class="hours-pill" style="background: var(--clr-primary); color: white;">${totalHours.toFixed(2)}h</span></td>
+      <td colspan="3"></td>
+    </tr>
+  `;
+}
+
+// ── Export CSV ─────────────────────────────────────────────
+window.exportCSV = function () {
+  if (!filteredRecords.length) { showToast("No records to export.", "warning"); return; }
+
+  const headers = ["Date", "Location", "Check In", "Check Out", "Hours", "Guests", "Notes"];
+  const rows = filteredRecords.map(r => [
+    r.date, r.location, r.checkIn, r.checkOut,
+    (r.totalHours || 0).toFixed(2),
+    r.guests || "",
+    `"${(r.note || "").replace(/"/g, '""')}"`
+  ]);
+
+  const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
+  downloadFile("work-hours.csv", csv, "text/csv");
+  showToast("CSV exported!", "success");
+};
+
+// ── Export Excel (.xlsx via SheetJS CDN) ─────────────────
+window.exportExcel = async function () {
+  if (!filteredRecords.length) { showToast("No records to export.", "warning"); return; }
+
+  // Lazy-load SheetJS
+  if (!window.XLSX) {
+    try {
+      await loadScript("https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js");
+    } catch {
+      showToast("Could not load Excel library.", "error");
+      return;
+    }
+  }
+
+  const wsData = [
+    ["Date", "Location", "Check In", "Check Out", "Hours", "Guests", "Notes"],
+    ...filteredRecords.map(r => [
+      r.date, r.location, r.checkIn, r.checkOut,
+      parseFloat((r.totalHours || 0).toFixed(2)),
+      r.guests || "",
+      r.note || ""
+    ])
+  ];
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Column widths
+  ws["!cols"] = [{ wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 30 }];
+  XLSX.utils.book_append_sheet(wb, ws, "Work Hours");
+  XLSX.writeFile(wb, "work-hours.xlsx");
+  showToast("Excel exported!", "success");
+};
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+function downloadFile(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── Toast ─────────────────────────────────────────────────
+function showToast(message, type = "info") {
+  const icons = { success: "ri-checkbox-circle-line", error: "ri-error-warning-line", warning: "ri-alert-line", info: "ri-information-line" };
+  const container = $("toastContainer");
+  const toast = el("div", `toast ${type}`);
+  toast.innerHTML = `<i class="${icons[type] || icons.info}"></i><span>${escHtml(message)}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add("hide");
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+// ── Utilities ─────────────────────────────────────────────
+function formatDate(iso) {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// ── Initialization ─────────────────────────────────────────
+subscribeFirestore();
+subscribeActivities();
+setDefaultDate();
+applyThemePreference();

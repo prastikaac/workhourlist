@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="Professional Work Hour Tracker — log, manage, and export your work hours across multiple locations with real-time Firebase sync." />
+  <title>WorkTrack — Hour Tracker</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+
+  <!-- Remix Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- ───── Sidebar ───── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <i class="ri-time-line logo-icon"></i>
+      <span class="logo-text">WorkTrack</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#dashboard" class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard', this)">
+        <i class="ri-dashboard-3-line"></i>
+        <span>Dashboard</span>
+      </a>
+      <a href="#add-entry" class="nav-item" id="nav-add" onclick="showSection('add-entry', this)">
+        <i class="ri-add-circle-line"></i>
+        <span>Add Entry</span>
+      </a>
+      <a href="#records" class="nav-item" id="nav-records" onclick="showSection('records', this)">
+        <i class="ri-file-list-3-line"></i>
+        <span>Records</span>
+      </a>
+      <a href="#activities" class="nav-item" id="nav-activities" onclick="showSection('activities', this)">
+        <i class="ri-history-line"></i>
+        <span>Activities</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">
+        <i class="ri-moon-line" id="themeIcon"></i>
+        <span id="themeLabel">Dark Mode</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ───── Mobile Top Bar ───── -->
+  <header class="mobile-header">
+    <button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">
+      <i class="ri-menu-3-line"></i>
+    </button>
+    <span class="mobile-logo">WorkTrack</span>
+    <button class="theme-toggle-mobile" onclick="toggleTheme()">
+      <i class="ri-moon-line" id="themeIconMobile"></i>
+    </button>
+  </header>
+
+  <!-- ───── Sidebar Overlay (mobile) ───── -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <!-- ───── Main Content ───── -->
+  <main class="main-content">
+
+    <!-- ── Dashboard Section ── -->
+    <section class="section active" id="section-dashboard">
+      <div class="section-header">
+        <h1 class="section-title">Dashboard</h1>
+        <p class="section-sub">Overview of your work hours</p>
+      </div>
+
+      <!-- Stat Cards -->
+      <div class="stats-grid">
+        <div class="stat-card total-hours">
+          <div class="stat-icon"><i class="ri-time-line"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">This Month</span>
+            <span class="stat-value" id="statThisMonthHours">0</span>
+          </div>
+        </div>
+        <div class="stat-card total-hours">
+          <div class="stat-icon" style="background:rgba(16,185,129,0.12);color:var(--clr-success);"><i
+              class="ri-calendar-event-line"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">This Week</span>
+            <span class="stat-value" id="statThisWeekHours" style="color:var(--clr-success);">0</span>
+          </div>
+        </div>
+        <div class="stat-card loc-1">
+          <div class="stat-icon"><i class="ri-building-line"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Kotkansiipi</span>
+            <span class="stat-value" id="statKotkansiipi">0h</span>
+          </div>
+        </div>
+        <div class="stat-card loc-2">
+          <div class="stat-icon"><i class="ri-building-line"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Rautkallionkatu</span>
+            <span class="stat-value" id="statRautkallionkatu">0h</span>
+          </div>
+        </div>
+        <div class="stat-card loc-3">
+          <div class="stat-icon"><i class="ri-building-line"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Kakoisvayla</span>
+            <span class="stat-value" id="statKakoisvayla">0h</span>
+          </div>
+        </div>
+        <div class="stat-card loc-4">
+          <div class="stat-icon"><i class="ri-building-line"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Mayavatie</span>
+            <span class="stat-value" id="statMayavatie">0h</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today's Work -->
+      <div class="card mt-xl" id="todayCard">
+        <div class="card-header">
+          <h2 class="card-title" id="todayTitle"><i class="ri-calendar-event-line"></i> Today's Work List</h2>
+        </div>
+        <div class="empty-state hidden" id="todayEmpty">
+          <i class="ri-calendar-check-line"></i>
+          <h3>No work for today</h3>
+        </div>
+        <div id="todayTableWrapper">
+          <table class="data-table" id="todayTable">
+            <thead>
+              <tr>
+                <th>Location</th>
+                <th>Check In</th>
+                <th>Check Out</th>
+                <th>Hours</th>
+                <th>Guests</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="todayTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tomorrow's Work -->
+      <div class="card mt-xl" id="tomorrowCard">
+        <div class="card-header">
+          <h2 class="card-title" id="tomorrowTitle"><i class="ri-calendar-todo-line"></i> Tomorrow's Work List</h2>
+        </div>
+        <div class="empty-state hidden" id="tomorrowEmpty">
+          <i class="ri-calendar-check-line"></i>
+          <h3>No work for tomorrow</h3>
+        </div>
+        <div id="tomorrowTableWrapper">
+          <table class="data-table" id="tomorrowTable">
+            <thead>
+              <tr>
+                <th>Location</th>
+                <th>Check In</th>
+                <th>Check Out</th>
+                <th>Hours</th>
+                <th>Guests</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="tomorrowTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+
+    </section>
+
+    <!-- ── Add / Edit Entry Section ── -->
+    <section class="section" id="section-add-entry">
+      <div class="section-header">
+        <h1 class="section-title" id="formSectionTitle">Add Entry</h1>
+        <p class="section-sub">Log your work hours</p>
+      </div>
+
+      <!-- Form Tabs -->
+      <div class="form-tabs" style="display:flex;gap:12px;margin-bottom:24px;">
+        <button class="btn btn-primary" id="tabDetailed" onclick="switchFormTab('detailed')">Cleanup Info</button>
+        <button class="btn btn-ghost" id="tabQuick" onclick="switchFormTab('quick')">Working Hour</button>
+      </div>
+
+      <div class="card form-card" id="detailedFormWrapper">
+        <form id="workEntryForm" onsubmit="handleFormSubmit(event)" novalidate>
+          <div class="form-grid">
+
+
+            <div class="form-group form-group-full">
+              <label class="form-label">
+                <i class="ri-map-pin-2-line"></i> Locations <span class="required">*</span>
+              </label>
+              <div class="checkbox-group" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
+                <label class="checkbox-label">
+                  <input type="checkbox" name="dLoc" value="Kotkansiipi" onchange="window.updateDynamicDetailedBlocks()"> Kotkansiipi
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="dLoc" value="Rautkallionkatu" onchange="window.updateDynamicDetailedBlocks()"> Rautkallionkatu
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="dLoc" value="Kakoisvayla" onchange="window.updateDynamicDetailedBlocks()"> Kakoisvayla
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="dLoc" value="Mayavatie" onchange="window.updateDynamicDetailedBlocks()"> Mayavatie
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="dLoc" value="House Cleaning (Puistola)" onchange="window.updateDynamicDetailedBlocks()"> House Cleaning (Puistola)
+                </label>
+              </div>
+              <span class="field-error" id="locationError"></span>
+            </div>
+
+            <!-- Date -->
+            <div class="form-group form-group-full">
+              <label class="form-label" for="date">
+                <i class="ri-calendar-line"></i> Date <span class="required">*</span>
+              </label>
+              <input type="date" id="date" class="form-control" required />
+              <span class="field-error" id="dateError"></span>
+            </div>
+
+            <!-- Dynamic Detailed Container -->
+            <div id="dynamicDetailedContainer" style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 24px;">
+              <!-- Dynamic blocks injected here -->
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group form-group-full">
+              <label class="form-label" for="notes">
+                <i class="ri-sticky-note-line"></i> Notes
+              </label>
+              <textarea id="notes" class="form-control" rows="3"
+                placeholder="Optional notes about the work…"></textarea>
+            </div>
+
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" id="cancelEditBtn" onclick="cancelEdit()" style="display:none">
+              <i class="ri-close-line"></i> Cancel
+            </button>
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+              <i class="ri-save-line"></i>
+              <span id="submitBtnText">Save Entry</span>
+            </button>
+          </div>
+
+          <input type="hidden" id="editDocId" value="" />
+        </form>
+      </div>
+
+      <!-- ── Quick Add Form ── -->
+      <div class="card form-card hidden" id="quickFormWrapper">
+        <form id="quickEntryForm" onsubmit="handleQuickSubmit(event)" novalidate>
+          <div class="form-grid">
+            <div class="form-group form-group-full">
+              <label class="form-label">
+                <i class="ri-map-pin-2-line"></i> Locations <span class="required">*</span>
+              </label>
+              <div class="checkbox-group" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
+                <label class="checkbox-label">
+                  <input type="checkbox" name="qLoc" value="Kotkansiipi" onchange="window.updateDynamicHours()"> Kotkansiipi
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="qLoc" value="Rautkallionkatu" onchange="window.updateDynamicHours()"> Rautkallionkatu
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="qLoc" value="Kakoisvayla" onchange="window.updateDynamicHours()"> Kakoisvayla
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="qLoc" value="Mayavatie" onchange="window.updateDynamicHours()"> Mayavatie
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="qLoc" value="House Cleaning (Puistola)" onchange="window.updateDynamicHours()"> House Cleaning (Puistola)
+                </label>
+              </div>
+              <span class="field-error" id="qLocationError"></span>
+            </div>
+            
+            <div id="dynamicHoursContainer" class="form-grid" style="grid-column: 1 / -1;">
+              <!-- Dynamic hours inputs injected here -->
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="qDate">
+                <i class="ri-calendar-line"></i> Date <span class="required">*</span>
+              </label>
+              <input type="date" id="qDate" class="form-control" required />
+              <span class="field-error" id="qDateError"></span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="qNotes">
+                <i class="ri-sticky-note-line"></i> Notes
+              </label>
+              <textarea id="qNotes" class="form-control" rows="1" placeholder="Optional notes…"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="qSubmitBtn">
+              <i class="ri-flashlight-line"></i> Add Working Hour
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ── Records Section ── -->
+    <section class="section" id="section-records">
+      <div class="section-header">
+        <h1 class="section-title">Records</h1>
+        <p class="section-sub">All your logged work hours</p>
+      </div>
+
+      <!-- This Month's Work -->
+      <div class="card" id="thisMonthCard" style="margin-bottom: 24px;">
+        <div class="card-header">
+          <h2 class="card-title" id="thisMonthTitle"><i class="ri-calendar-line"></i> This Month Work Hours</h2>
+        </div>
+        <div class="empty-state hidden" id="thisMonthEmpty">
+          <i class="ri-inbox-line"></i>
+          <h3>No work hours logged this month</h3>
+        </div>
+        <div id="thisMonthTableWrapper">
+          <table class="data-table" id="thisMonthTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Location</th>
+                <th>Check In</th>
+                <th>Check Out</th>
+                <th>Hours</th>
+                <th>Guests</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="thisMonthTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="card filters-card">
+        <div class="filters-header">
+          <h2 class="card-title"><i class="ri-filter-3-line"></i> Filters</h2>
+          <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="ri-refresh-line"></i> Reset</button>
+        </div>
+        <div class="filters-grid">
+          <div class="form-group">
+            <label class="form-label" for="filterLocation">Location</label>
+            <select id="filterLocation" class="form-control" onchange="applyFilters()">
+              <option value="">All Locations</option>
+              <option value="Kotkansiipi">Kotkansiipi</option>
+              <option value="Rautkallionkatu">Rautkallionkatu</option>
+              <option value="Kakoisvayla">Kakoisvayla</option>
+              <option value="Mayavatie">Mayavatie</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="filterMonth">Month</label>
+            <input type="month" id="filterMonth" class="form-control" oninput="applyFilters()" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="filterStartDate">Start Date</label>
+            <input type="date" id="filterStartDate" class="form-control" oninput="applyFilters()" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="filterEndDate">End Date</label>
+            <input type="date" id="filterEndDate" class="form-control" oninput="applyFilters()" />
+          </div>
+          <div class="form-group form-group-full">
+            <label class="form-label" for="filterNotes">Search Notes</label>
+            <input type="text" id="filterNotes" class="form-control" placeholder="Search notes…"
+              oninput="applyFilters()" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Export buttons -->
+      <div class="export-row">
+        <button class="btn btn-success" onclick="exportCSV()"><i class="ri-file-text-line"></i> Export CSV</button>
+        <button class="btn btn-info" onclick="exportExcel()"><i class="ri-table-line"></i> Export Excel</button>
+      </div>
+
+      <!-- Records Table -->
+      <div class="card mt-md">
+        <div class="loading-spinner" id="recordsSpinner">
+          <div class="spinner"></div>
+          <p>Loading records…</p>
+        </div>
+        <div class="empty-state hidden" id="recordsEmpty">
+          <i class="ri-inbox-line"></i>
+          <h3>No records found</h3>
+          <p>Try changing the filters or add a new entry.</p>
+        </div>
+        <div class="table-wrapper hidden" id="recordsTableWrapper">
+          <table class="data-table" id="recordsTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Location</th>
+                <th>Check In</th>
+                <th>Check Out</th>
+                <th>Hours</th>
+                <th>Guests</th>
+                <th>Notes</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="recordsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Activities Section ── -->
+    <section class="section" id="section-activities">
+      <div class="section-header">
+        <h1 class="section-title">Activities</h1>
+        <p class="section-sub">Log of all added, edited, and deleted records</p>
+      </div>
+
+      <div class="card mt-md">
+        <div class="table-wrapper" id="activitiesTableWrapper">
+          <table class="data-table" id="activitiesTable">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Action</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody id="activitiesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ───── Toast Container ───── -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ───── Confirm Dialog ───── -->
+  <div class="modal-overlay hidden" id="confirmOverlay">
+    <div class="modal-dialog">
+      <div class="modal-icon danger"><i class="ri-delete-bin-6-line"></i></div>
+      <h3 class="modal-title">Delete Entry</h3>
+      <p class="modal-body">Are you sure you want to delete this entry? This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+        <button class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK v11 (ESM via CDN) -->
+  <script type="module" src="script.js"></script>
+</body>
+
+</html>
