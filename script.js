@@ -1005,77 +1005,55 @@ function renderRecordsTable(records) {
   `;
 }
 
-// ── Export CSV ─────────────────────────────────────────────
-window.exportCSV = function () {
-  if (!filteredRecords.length) { showToast("No records to export.", "warning"); return; }
-
-  const headers = ["Date", "Location", "Check In", "Check Out", "Hours", "Guests", "Notes"];
-  const rows = filteredRecords.map(r => [
-    r.date, r.location, r.checkIn, r.checkOut,
-    (r.totalHours || 0).toFixed(2),
-    r.guests || "",
-    `"${(r.note || "").replace(/"/g, '""')}"`
-  ]);
-
-  const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
-  downloadFile("work-hours.csv", csv, "text/csv");
-  showToast("CSV exported!", "success");
-};
-
-// ── Export Excel (.xlsx via SheetJS CDN) ─────────────────
-window.exportExcel = async function () {
-  if (!filteredRecords.length) { showToast("No records to export.", "warning"); return; }
-
-  // Lazy-load SheetJS
-  if (!window.XLSX) {
-    try {
-      await loadScript("https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js");
-    } catch {
-      showToast("Could not load Excel library.", "error");
-      return;
-    }
+// ── Generate Text Summary ──────────────────────────────────
+window.generateTextSummary = function () {
+  if (!filteredRecords.length) { 
+    showToast("No records to summarize.", "warning"); 
+    return; 
   }
 
-  const wsData = [
-    ["Date", "Location", "Check In", "Check Out", "Hours", "Guests", "Notes"],
-    ...filteredRecords.map(r => [
-      r.date, r.location, r.checkIn, r.checkOut,
-      parseFloat((r.totalHours || 0).toFixed(2)),
-      r.guests || "",
-      r.note || ""
-    ])
-  ];
+  const grouped = {};
+  filteredRecords.forEach(r => {
+    if (!grouped[r.date]) grouped[r.date] = [];
+    grouped[r.date].push(r);
+  });
 
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  
+  const lines = Object.keys(grouped).sort().map(dateStr => {
+    const d = new Date(dateStr);
+    const dateFormatted = `${monthNames[d.getMonth()]} ${d.getDate()}`;
+    
+    const locStrings = grouped[dateStr].map(r => {
+      const hrs = r.totalHours ? r.totalHours.toFixed(2).replace(/\.00$/, '') : "0";
+      return `${r.location} (${hrs} Hours)`;
+    }).join(" + ");
+    
+    return `${dateFormatted} : ${locStrings}`;
+  });
 
-  // Column widths
-  ws["!cols"] = [{ wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 30 }];
-  XLSX.utils.book_append_sheet(wb, ws, "Work Hours");
-  XLSX.writeFile(wb, "work-hours.xlsx");
-  showToast("Excel exported!", "success");
+  const totalSummaryHours = filteredRecords.reduce((sum, r) => sum + (parseFloat(r.totalHours) || 0), 0);
+  const totalSummaryStr = totalSummaryHours.toFixed(2).replace(/\.00$/, '');
+
+  let text = lines.join("\n");
+  text += "\n----------------------------------------------------------\n";
+  text += `Total Hours : ${totalSummaryStr} Hours`;
+
+  $("summaryText").value = text;
+  $("summaryContainer").classList.remove("hidden");
+  showToast("Summary generated!", "success");
 };
 
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = src;
-    s.onload = resolve;
-    s.onerror = reject;
-    document.head.appendChild(s);
+window.copyTextSummary = function () {
+  const text = $("summaryText").value;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast("Summary copied to clipboard!", "success");
+  }).catch(err => {
+    console.error("Could not copy text: ", err);
+    showToast("Failed to copy text.", "error");
   });
-}
-
-function downloadFile(filename, content, type) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+};
 
 // ── Toast ─────────────────────────────────────────────────
 function showToast(message, type = "info") {

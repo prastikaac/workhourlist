@@ -389,10 +389,17 @@
         </div>
       </div>
 
-      <!-- Export buttons -->
+      <!-- Generate Summary -->
       <div class="export-row">
-        <button class="btn btn-success" onclick="exportCSV()"><i class="ri-file-text-line"></i> Export CSV</button>
-        <button class="btn btn-info" onclick="exportExcel()"><i class="ri-table-line"></i> Export Excel</button>
+        <button class="btn btn-primary" onclick="generateTextSummary()"><i class="ri-file-text-line"></i> Generate Summary</button>
+      </div>
+      
+      <div id="summaryContainer" class="card mt-md hidden" style="padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 style="font-size: 16px; font-weight: 700; color: var(--clr-primary);"><i class="ri-file-list-3-line"></i> Generated Summary</h3>
+          <button class="btn btn-sm btn-ghost" onclick="copyTextSummary()"><i class="ri-clipboard-line"></i> Copy</button>
+        </div>
+        <textarea id="summaryText" class="form-control" rows="6" readonly style="resize: vertical; line-height: 1.5; font-size: 14px;"></textarea>
       </div>
 
       <!-- Records Table -->
