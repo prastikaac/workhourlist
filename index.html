@@ -366,15 +366,25 @@
           <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="ri-refresh-line"></i> Reset</button>
         </div>
         <div class="filters-grid">
-          <div class="form-group">
-            <label class="form-label" for="filterLocation">Location</label>
-            <select id="filterLocation" class="form-control" onchange="applyFilters()">
-              <option value="">All Locations</option>
-              <option value="Kotkansiipi">Kotkansiipi</option>
-              <option value="Rautkallionkatu">Rautkallionkatu</option>
-              <option value="Kakoisvayla">Kakoisvayla</option>
-              <option value="Mayavatie">Mayavatie</option>
-            </select>
+          <div class="form-group form-group-full">
+            <label class="form-label"><i class="ri-map-pin-2-line"></i> Location</label>
+            <div class="checkbox-group" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+              <label class="checkbox-label">
+                <input type="checkbox" name="filterLoc" value="Kotkansiipi" onchange="applyFilters()"> Kotkansiipi
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" name="filterLoc" value="Rautkallionkatu" onchange="applyFilters()"> Rautkallionkatu
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" name="filterLoc" value="Kakoisvayla" onchange="applyFilters()"> Kakoisvayla
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" name="filterLoc" value="Mayavatie" onchange="applyFilters()"> Mayavatie
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" name="filterLoc" value="House Cleaning (Puistola)" onchange="applyFilters()"> House Cleaning (Puistola)
+              </label>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="filterMonth">Month</label>

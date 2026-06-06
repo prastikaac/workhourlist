@@ -198,7 +198,7 @@ window.updateDynamicDetailedBlocks = function () {
               <label class="form-label">
                 <i class="ri-logout-circle-line"></i> End Time <span class="label-loc">(${loc})</span>
               </label>
-              <input type="time" id="checkOut_${loc}" class="form-control d-checkout" value="${vals.checkOut}" oninput="autoCalculateHours('${loc}')" />
+              <input type="time" id="checkOut_${loc}" class="form-control d-checkout" value="${vals.checkOut}" />
               <span class="field-error" id="checkOutError_${loc}"></span>
             </div>
 
@@ -208,7 +208,7 @@ window.updateDynamicDetailedBlocks = function () {
                 <i class="ri-login-circle-line"></i> Start Time <span class="label-loc">(${loc})</span> <span class="required">*</span>
               </label>
               <div class="time-input-row">
-                <input type="time" id="checkIn_${loc}" class="form-control d-checkin" value="${vals.checkIn}" oninput="autoCalculateHours('${loc}')" />
+                <input type="time" id="checkIn_${loc}" class="form-control d-checkin" value="${vals.checkIn}" />
               </div>
               <span class="field-error" id="checkInError_${loc}"></span>
             </div>
@@ -249,7 +249,7 @@ window.updateDynamicDetailedBlocks = function () {
               <label class="form-label">
                 <i class="ri-logout-circle-line"></i> Check-Out Time <span class="label-loc">(${loc})</span>
               </label>
-              <input type="time" id="checkOut_${loc}" class="form-control d-checkout" value="${vals.checkOut}" oninput="autoCalculateHours('${loc}')" />
+              <input type="time" id="checkOut_${loc}" class="form-control d-checkout" value="${vals.checkOut}" />
               <span class="field-error" id="checkOutError_${loc}"></span>
             </div>
 
@@ -259,7 +259,7 @@ window.updateDynamicDetailedBlocks = function () {
                 <i class="ri-login-circle-line"></i> Check-In Time <span class="label-loc">(${loc})</span> <span class="required">*</span>
               </label>
               <div class="time-input-row">
-                <input type="time" id="checkIn_${loc}" class="form-control d-checkin ${isInputDisabled ? 'disabled-input' : ''}" value="${vals.checkIn}" oninput="autoCalculateHours('${loc}')" ${isInputDisabled ? 'disabled' : ''} />
+                <input type="time" id="checkIn_${loc}" class="form-control d-checkin ${isInputDisabled ? 'disabled-input' : ''}" value="${vals.checkIn}" ${isInputDisabled ? 'disabled' : ''} />
                 <button type="button" class="btn-no-checkin ${isNoCheckInActive ? 'active' : ''}" id="noCheckInBtn_${loc}" onclick="toggleNoCheckIn('${loc}', 'no_check_in')">
                   <i class="${isNoCheckInActive ? 'ri-close-circle-fill' : 'ri-close-circle-line'}"></i> No Check In
                 </button>
@@ -936,14 +936,17 @@ function renderTomorrowTable(records) {
 
 // ── Filters ────────────────────────────────────────────────
 window.applyFilters = function () {
-  const loc = $("filterLocation").value;
+  // Collect all checked location checkboxes
+  const checkedLocs = new Set(
+    [...document.querySelectorAll('input[name="filterLoc"]:checked')].map(cb => cb.value)
+  );
   const month = $("filterMonth").value;    // "YYYY-MM"
   const startDate = $("filterStartDate").value;
   const endDate = $("filterEndDate").value;
   const noteQ = $("filterNotes").value.trim().toLowerCase();
 
   filteredRecords = allRecords.filter(r => {
-    if (loc && r.location !== loc) return false;
+    if (checkedLocs.size > 0 && !checkedLocs.has(r.location)) return false;
     if (month && !r.date?.startsWith(month)) return false;
     if (startDate && r.date < startDate) return false;
     if (endDate && r.date > endDate) return false;
@@ -955,7 +958,9 @@ window.applyFilters = function () {
 };
 
 window.clearFilters = function () {
-  ["filterLocation", "filterMonth", "filterStartDate", "filterEndDate", "filterNotes"]
+  // Uncheck all location checkboxes
+  document.querySelectorAll('input[name="filterLoc"]').forEach(cb => cb.checked = false);
+  ["filterMonth", "filterStartDate", "filterEndDate", "filterNotes"]
     .forEach(id => { const el = $(id); if (el) el.value = ""; });
   applyFilters();
 };
@@ -1012,6 +1017,15 @@ window.generateTextSummary = function () {
     return; 
   }
 
+  // Build title from checked location filters, or fall back to unique locations in results
+  const checkedLocs = [...document.querySelectorAll('input[name="filterLoc"]:checked')].map(cb => cb.value);
+  const titleLocs = checkedLocs.length > 0
+    ? checkedLocs
+    : [...new Set(filteredRecords.map(r => r.location))];
+  const locationTitle = titleLocs.join(" & ");
+  const summaryTitle = `${locationTitle} Working Hours`;
+  const separator = "=".repeat(Math.max(summaryTitle.length, 40));
+
   const grouped = {};
   filteredRecords.forEach(r => {
     if (!grouped[r.date]) grouped[r.date] = [];
@@ -1035,7 +1049,8 @@ window.generateTextSummary = function () {
   const totalSummaryHours = filteredRecords.reduce((sum, r) => sum + (parseFloat(r.totalHours) || 0), 0);
   const totalSummaryStr = totalSummaryHours.toFixed(2).replace(/\.00$/, '');
 
-  let text = lines.join("\n");
+  let text = `${summaryTitle}\n${separator}\n`;
+  text += lines.join("\n");
   text += "\n----------------------------------------------------------\n";
   text += `Total Hours : ${totalSummaryStr} Hours`;
 
