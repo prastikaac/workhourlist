@@ -685,9 +685,9 @@ window.editEntry = function (docId) {
 
 window.cancelEdit = function () {
   $("editDocId").value = "";
-  $("submitBtnText").textContent = "Save Entry";
-  $("cancelEditBtn").style.display = "none";
-  $("formSectionTitle").textContent = "Add Entry";
+  if ($("submitBtnText")) $("submitBtnText").textContent = "Save Entry";
+  if ($("cancelEditBtn")) $("cancelEditBtn").style.display = "none";
+  if ($("formSectionTitle")) $("formSectionTitle").textContent = "Add Entry";
   window.checkInSkipStates = {};
   resetForm();
 };
@@ -735,14 +735,14 @@ function subscribeFirestore() {
     renderThisMonthTable(allRecords);
     renderTodayTable(allRecords);
     renderTomorrowTable(allRecords);
-    // hide spinners
-    $("dashboardSpinner").classList.add("hidden");
-    $("recordsSpinner").classList.add("hidden");
+    // hide spinners (guard against elements that may not exist)
+    if ($("dashboardSpinner")) $("dashboardSpinner").classList.add("hidden");
+    if ($("recordsSpinner")) $("recordsSpinner").classList.add("hidden");
   }, err => {
     console.error("Firestore error:", err);
     showToast("Could not connect to Firestore.", "error");
-    $("dashboardSpinner").classList.add("hidden");
-    $("recordsSpinner").classList.add("hidden");
+    if ($("dashboardSpinner")) $("dashboardSpinner").classList.add("hidden");
+    if ($("recordsSpinner")) $("recordsSpinner").classList.add("hidden");
   });
 }
 
