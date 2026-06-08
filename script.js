@@ -78,7 +78,11 @@ function setDefaultDate() {
 }
 
 function toISODate(d) {
-  return d.toISOString().split("T")[0];
+  // Use LOCAL date components — toISOString() would give UTC which is wrong for Finland (UTC+3)
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 // ── Theme ─────────────────────────────────────────────────
@@ -768,10 +772,11 @@ function updateStats(records) {
     .filter(r => r.date >= isoMonthStart && r.date <= toISODate(now))
     .reduce((s, r) => s + (r.totalHours || 0), 0);
 
-  // Calculate this week's hours
-  const day = now.getDay() || 7; // Convert Sun=0 to 7
+  // Calculate this week's hours — week runs Mon → Sun (ISO week, Finnish time)
+  // (getDay()+6)%7 maps Mon=0, Tue=1, … Sun=6
+  const daysFromMonday = (now.getDay() + 6) % 7;
   const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - day + 1);
+  startOfWeek.setDate(now.getDate() - daysFromMonday);
   startOfWeek.setHours(0, 0, 0, 0);
   const isoWeekStart = toISODate(startOfWeek);
 
