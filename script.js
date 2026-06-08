@@ -62,7 +62,6 @@ const el = (tag, cls, html) => {
 // ── Page Init ─────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   setDefaultDate();
-  setDefaultCheckIn();
   initTheme();
   subscribeFirestore();
 });
@@ -72,16 +71,10 @@ function setDefaultDate() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   $("date").value = toISODate(tomorrow);
-  
+
   if ($("qDate")) {
     $("qDate").value = toISODate(new Date());
   }
-}
-
-// ── Set default check-in to 15:00 (3:00 PM) ──────────────
-function setDefaultCheckIn() {
-  $("checkIn").value = "15:00";
-  autoCalculateHours();
 }
 
 function toISODate(d) {
@@ -189,7 +182,7 @@ window.updateDynamicDetailedBlocks = function () {
       html += `
         <div class="detailed-block card" data-loc="${loc}">
           <h3>
-            <i class="ri-map-pin-line"></i> ${loc} Details
+            <i class="ri-building-line"></i> ${loc} Details
           </h3>
           <div class="form-grid">
             
@@ -240,7 +233,7 @@ window.updateDynamicDetailedBlocks = function () {
       html += `
         <div class="detailed-block card" data-loc="${loc}">
           <h3>
-            <i class="ri-map-pin-line"></i> ${loc} Details
+            <i class="ri-building-line"></i> ${loc} Details
           </h3>
           <div class="form-grid">
             
@@ -508,15 +501,15 @@ window.handleFormSubmit = async function (e) {
   });
 
   try {
-    if (editId && submissions.length === 1) {
-      // UPDATE (only supports single record edit)
+    if (editId) {
+      // UPDATE existing record
       const data = submissions[0];
       await updateDoc(doc(db, "workHours", editId), { ...data, updatedAt: serverTimestamp() });
       logActivity("EDITED", `Updated work entry for ${data.location}`);
       showToast("Entry updated successfully!", "success");
       cancelEdit();
     } else {
-      // ADD MULTIPLE
+      // ADD NEW (one or multiple)
       const promises = submissions.map(async (data) => {
         await addDoc(collection(db, "workHours"), { ...data, createdAt: serverTimestamp() });
         logActivity("ADDED", `Added new work entry for ${data.location}`);
@@ -845,10 +838,7 @@ function renderThisMonthTable(records) {
 function renderTodayTable(records) {
   const todayDate = new Date();
   const isoToday = toISODate(todayDate);
-
-  // Format date like "7 June"
   const formattedDate = todayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
-
   const todayRecords = records.filter(r => r.date === isoToday);
 
   $("todayTitle").innerHTML = `<i class="ri-calendar-event-line"></i> Today (${formattedDate}) Work List`;
@@ -867,9 +857,11 @@ function renderTodayTable(records) {
   wrapper.classList.remove("hidden");
 
   const totalHours = todayRecords.reduce((sum, r) => sum + (parseFloat(r.totalHours) || 0), 0);
+
+  // ── Desktop table rows ──
   const rowsHtml = todayRecords.map(r => `
     <tr>
-      <td><span class="location-badge badge-${r.location.replace(/[^a-zA-Z0-9]/g, '')}">${r.location}</span></td>
+      <td><span class="dash-loc-chip"><i class="ri-building-line"></i>${r.location}</span></td>
       <td>${r.checkIn ? r.checkIn : (r.checkInSkipState === 'no_check_in' ? '<span style="color:var(--clr-text-muted);font-style:italic">No check-in</span>' : (r.checkInSkipState === 'not_provided' ? '<span style="color:var(--clr-text-muted);font-style:italic">Not provided</span>' : '<span style="color:var(--clr-text-muted)">—</span>'))}</td>
       <td>${r.checkOut ? r.checkOut : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
       <td><span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span></td>
@@ -879,12 +871,59 @@ function renderTodayTable(records) {
   `).join("");
 
   tbody.innerHTML = rowsHtml + `
-    <tr style="background: var(--clr-surface-2); font-weight: 700;">
-      <td colspan="3" style="text-align: right;">Total Working Hours:</td>
-      <td><span class="hours-pill" style="background: var(--clr-primary); color: white;">${totalHours.toFixed(2)}h</span></td>
+    <tr class="dash-total-row">
+      <td colspan="3" style="text-align:right;">Total Working Hours:</td>
+      <td><span class="hours-pill">${totalHours.toFixed(2)}h</span></td>
       <td colspan="2"></td>
     </tr>
   `;
+
+  // ── Mobile card list ──
+  const existingCardList = wrapper.querySelector('.work-card-list');
+  if (existingCardList) existingCardList.remove();
+
+  const cardListEl = document.createElement('div');
+  cardListEl.className = 'work-card-list';
+
+  cardListEl.innerHTML = todayRecords.map(r => {
+    const checkInText = r.checkIn ? r.checkIn
+      : (r.checkInSkipState === 'no_check_in' ? '<em style="color:var(--clr-text-muted)">No check-in</em>'
+      : (r.checkInSkipState === 'not_provided' ? '<em style="color:var(--clr-text-muted)">Not provided</em>'
+      : '<span style="color:var(--clr-text-muted)">—</span>'));
+    const checkOutText = r.checkOut || '<span style="color:var(--clr-text-muted)">—</span>';
+    const noteHtml = r.note ? `<div class="work-card-note">${escHtml(r.note)}</div>` : '';
+
+    return `
+      <div class="work-card">
+        <div class="work-card-header">
+          <span class="dash-loc-chip"><i class="ri-building-line"></i>${r.location}</span>
+          <span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span>
+        </div>
+        <div class="work-card-field">
+          <span class="work-card-label">Check-In</span>
+          <span class="work-card-value">${checkInText}</span>
+        </div>
+        <div class="work-card-field">
+          <span class="work-card-label">Check-Out</span>
+          <span class="work-card-value">${checkOutText}</span>
+        </div>
+        <div class="work-card-field">
+          <span class="work-card-label">Guests</span>
+          <span class="work-card-value">${r.guests || '—'}</span>
+        </div>
+        ${noteHtml}
+      </div>
+    `;
+  }).join('');
+
+  cardListEl.innerHTML += `
+    <div class="work-card-total">
+      Total Working Hours:
+      <span class="hours-pill">${totalHours.toFixed(2)}h</span>
+    </div>
+  `;
+
+  wrapper.appendChild(cardListEl);
 }
 
 // ── Tomorrow's Work Table ─────────────────────────────────
@@ -892,10 +931,7 @@ function renderTomorrowTable(records) {
   const tomorrowDate = new Date();
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
   const isoTomorrow = toISODate(tomorrowDate);
-
-  // Format date like "7 June"
   const formattedDate = tomorrowDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
-
   const tmrRecords = records.filter(r => r.date === isoTomorrow);
 
   $("tomorrowTitle").innerHTML = `<i class="ri-calendar-todo-line"></i> Tomorrow (${formattedDate}) Work List`;
@@ -914,9 +950,11 @@ function renderTomorrowTable(records) {
   wrapper.classList.remove("hidden");
 
   const totalHours = tmrRecords.reduce((sum, r) => sum + (parseFloat(r.totalHours) || 0), 0);
+
+  // ── Desktop table rows ──
   const rowsHtml = tmrRecords.map(r => `
     <tr>
-      <td><span class="location-badge badge-${r.location.replace(/[^a-zA-Z0-9]/g, '')}">${r.location}</span></td>
+      <td><span class="dash-loc-chip"><i class="ri-building-line"></i>${r.location}</span></td>
       <td>${r.checkIn ? r.checkIn : (r.checkInSkipState === 'no_check_in' ? '<span style="color:var(--clr-text-muted);font-style:italic">No check-in</span>' : (r.checkInSkipState === 'not_provided' ? '<span style="color:var(--clr-text-muted);font-style:italic">Not provided</span>' : '<span style="color:var(--clr-text-muted)">—</span>'))}</td>
       <td>${r.checkOut ? r.checkOut : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
       <td><span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span></td>
@@ -924,14 +962,61 @@ function renderTomorrowTable(records) {
       <td>${r.note ? escHtml(r.note) : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
     </tr>
   `).join("");
-  
+
   tbody.innerHTML = rowsHtml + `
-    <tr style="background: var(--clr-surface-2); font-weight: 700;">
-      <td colspan="3" style="text-align: right;">Total Working Hours:</td>
-      <td><span class="hours-pill" style="background: var(--clr-primary); color: white;">${totalHours.toFixed(2)}h</span></td>
+    <tr class="dash-total-row">
+      <td colspan="3" style="text-align:right;">Total Working Hours:</td>
+      <td><span class="hours-pill">${totalHours.toFixed(2)}h</span></td>
       <td colspan="2"></td>
     </tr>
   `;
+
+  // ── Mobile card list ──
+  const existingCardList = wrapper.querySelector('.work-card-list');
+  if (existingCardList) existingCardList.remove();
+
+  const cardListEl = document.createElement('div');
+  cardListEl.className = 'work-card-list';
+
+  cardListEl.innerHTML = tmrRecords.map(r => {
+    const checkInText = r.checkIn ? r.checkIn
+      : (r.checkInSkipState === 'no_check_in' ? '<em style="color:var(--clr-text-muted)">No check-in</em>'
+      : (r.checkInSkipState === 'not_provided' ? '<em style="color:var(--clr-text-muted)">Not provided</em>'
+      : '<span style="color:var(--clr-text-muted)">—</span>'));
+    const checkOutText = r.checkOut || '<span style="color:var(--clr-text-muted)">—</span>';
+    const noteHtml = r.note ? `<div class="work-card-note">${escHtml(r.note)}</div>` : '';
+
+    return `
+      <div class="work-card">
+        <div class="work-card-header">
+          <span class="dash-loc-chip"><i class="ri-building-line"></i>${r.location}</span>
+          <span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span>
+        </div>
+        <div class="work-card-field">
+          <span class="work-card-label">Check-In</span>
+          <span class="work-card-value">${checkInText}</span>
+        </div>
+        <div class="work-card-field">
+          <span class="work-card-label">Check-Out</span>
+          <span class="work-card-value">${checkOutText}</span>
+        </div>
+        <div class="work-card-field">
+          <span class="work-card-label">Guests</span>
+          <span class="work-card-value">${r.guests || '—'}</span>
+        </div>
+        ${noteHtml}
+      </div>
+    `;
+  }).join('');
+
+  cardListEl.innerHTML += `
+    <div class="work-card-total">
+      Total Working Hours:
+      <span class="hours-pill">${totalHours.toFixed(2)}h</span>
+    </div>
+  `;
+
+  wrapper.appendChild(cardListEl);
 }
 
 // ── Filters ────────────────────────────────────────────────
@@ -1100,7 +1185,5 @@ function escHtml(str) {
 }
 
 // ── Initialization ─────────────────────────────────────────
-subscribeFirestore();
-subscribeActivities();
-setDefaultDate();
-applyThemePreference();
+// Note: subscribeFirestore(), subscribeActivities(), setDefaultDate(),
+// and initTheme() are called inside the DOMContentLoaded handler above.

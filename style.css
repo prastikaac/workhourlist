@@ -963,6 +963,156 @@ select.form-control {
   gap: 8px;
 }
 
+/* ── Dashboard work-list tables (Today / Tomorrow) ── */
+/* Slightly tighter than the full records table */
+#todayTable th,
+#tomorrowTable th {
+  padding: 11px 16px;
+  font-size: 11px;
+}
+
+#todayTable td,
+#tomorrowTable td {
+  padding: 12px 16px;
+}
+
+/* Total-hours summary row at the bottom */
+.dash-total-row td {
+  background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(99,102,241,0.02));
+  font-weight: 700;
+  font-size: 13px;
+  border-top: 2px solid var(--clr-border);
+  border-bottom: none !important;
+}
+
+.dash-total-row .hours-pill {
+  background: var(--clr-primary);
+  color: #fff;
+  font-size: 13px;
+}
+
+/* Clean location chip for dashboard today/tomorrow tables — no colour coding */
+.dash-loc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: var(--clr-surface);
+  border: 1.5px solid var(--clr-border);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--clr-text);
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.dash-loc-chip i {
+  font-size: 16px;
+  color: var(--clr-primary);
+  flex-shrink: 0;
+}
+
+/* ── Mobile card list for Today / Tomorrow tables ── */
+/* Hidden on desktop, revealed on mobile */
+.work-card-list {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 16px;
+}
+
+.work-card {
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+  transition: box-shadow var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.work-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--clr-primary);
+  border-radius: 3px 0 0 3px;
+}
+
+.work-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.work-card-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--clr-border);
+  margin-bottom: 2px;
+}
+
+.work-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.work-card-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--clr-text-muted);
+}
+
+.work-card-value {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--clr-text);
+}
+
+.work-card-note {
+  grid-column: 1 / -1;
+  background: rgba(99,102,241,0.04);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  color: var(--clr-text-muted);
+  font-style: italic;
+  border-left: 2px solid rgba(99,102,241,0.2);
+}
+
+/* Total pill at the bottom of card list */
+.work-card-total {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+}
+
+.work-card-total .hours-pill {
+  background: var(--clr-primary);
+  color: #fff;
+  font-size: 13px;
+  padding: 5px 14px;
+}
+
 /* ── Loading Spinner ── */
 .loading-spinner {
   display: flex;
@@ -1251,17 +1401,31 @@ select.form-control {
     justify-content: center;
   }
 
-  /* Tables: horizontal scroll */
+  /* Records & this-month tables: horizontal scroll (many columns + actions) */
   .table-wrapper,
-  #todayTableWrapper,
-  #tomorrowTableWrapper,
   #thisMonthTableWrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  .data-table {
+  .table-wrapper .data-table,
+  #thisMonthTableWrapper .data-table {
     min-width: 560px;
+  }
+
+  /* Today / Tomorrow: switch to card list, hide table */
+  #todayTableWrapper,
+  #tomorrowTableWrapper {
+    overflow-x: visible;
+  }
+
+  #todayTable,
+  #tomorrowTable {
+    display: none;
+  }
+
+  .work-card-list {
+    display: flex;
   }
 
   /* Filters */
