@@ -332,33 +332,6 @@
         <p class="section-sub">All your logged work hours</p>
       </div>
 
-      <!-- This Month's Work -->
-      <div class="card" id="thisMonthCard" style="margin-bottom: 24px;">
-        <div class="card-header">
-          <h2 class="card-title" id="thisMonthTitle"><i class="ri-calendar-line"></i> This Month Work Hours</h2>
-        </div>
-        <div class="empty-state hidden" id="thisMonthEmpty">
-          <i class="ri-inbox-line"></i>
-          <h3>No work hours logged this month</h3>
-        </div>
-        <div id="thisMonthTableWrapper">
-          <table class="data-table" id="thisMonthTable">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Location</th>
-                <th>Check In</th>
-                <th>Check Out</th>
-                <th>Hours</th>
-                <th>Guests</th>
-                <th>Notes</th>
-              </tr>
-            </thead>
-            <tbody id="thisMonthTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- Filters -->
       <div class="card filters-card">
         <div class="filters-header">
@@ -445,6 +418,33 @@
               </tr>
             </thead>
             <tbody id="recordsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- This Month's Work (summary at the bottom) -->
+      <div class="card mt-xl" id="thisMonthCard">
+        <div class="card-header">
+          <h2 class="card-title" id="thisMonthTitle"><i class="ri-calendar-line"></i> This Month Work Hours</h2>
+        </div>
+        <div class="empty-state hidden" id="thisMonthEmpty">
+          <i class="ri-inbox-line"></i>
+          <h3>No work hours logged this month</h3>
+        </div>
+        <div id="thisMonthTableWrapper">
+          <table class="data-table" id="thisMonthTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Location</th>
+                <th>Check In</th>
+                <th>Check Out</th>
+                <th>Hours</th>
+                <th>Guests</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="thisMonthTableBody"></tbody>
           </table>
         </div>
       </div>
