@@ -36,6 +36,7 @@ let allRecords = [];   // raw Firestore docs
 let filteredRecords = [];  // after applying filters
 let pendingDeleteId = null; // doc id waiting for confirm
 let allActivities = []; // activity logs
+let allNotes = [];         // workNotes docs — for pending-note auto-fill
 
 // ── Activity Helper ───────────────────────────────────────
 async function logActivity(action, message) {
@@ -64,6 +65,8 @@ document.addEventListener("DOMContentLoaded", () => {
   setDefaultDate();
   initTheme();
   subscribeFirestore();
+  subscribeNotes();
+  subscribeActivities();
 });
 
 // ── Set tomorrow's date as default ────────────────────────
@@ -74,6 +77,10 @@ function setDefaultDate() {
 
   if ($("qDate")) {
     $("qDate").value = toISODate(new Date());
+  }
+
+  if ($("noteDate")) {
+    $("noteDate").value = toISODate(new Date());
   }
 }
 
@@ -146,6 +153,367 @@ window.switchFormTab = function (tab) {
     qTab.className = "btn btn-ghost";
   }
 };
+
+// ── Dashboard shortcut buttons ──────────────────────
+window.goToWorkingHour = function () {
+  showSection('add-entry', $("nav-add"));
+  switchFormTab('quick');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.goToNote = function () {
+  showSection('notes', $("nav-notes"));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// ── Toggle "Other" text input ────────────────────────────
+window.toggleNoteOther = function (checkbox) {
+  const wrapper = $("noteOtherWrapper");
+  const input   = $("noteOtherText");
+  if (checkbox.checked) {
+    wrapper.classList.remove("hidden");
+    input.focus();
+  } else {
+    wrapper.classList.add("hidden");
+    input.value = "";
+  }
+};
+
+// ── Notes Submit (Add + Edit) ──────────────────────────
+window.handleNoteSubmit = async function (e) {
+  e.preventDefault();
+  let valid = true;
+
+  let items = [...document.querySelectorAll('input[name="noteItem"]:checked')].map(c => c.value);
+  const otherChecked = items.includes("__other__");
+
+  if (otherChecked) {
+    const otherText = ($("noteOtherText").value || "").trim();
+    if (!otherText) {
+      $("noteOtherText").classList.add("error");
+      $("noteItemError").textContent = "Please describe the 'Other' item.";
+      valid = false;
+    } else {
+      $("noteOtherText").classList.remove("error");
+      items = items.filter(v => v !== "__other__").concat(otherText);
+    }
+  }
+
+  const locs = [...document.querySelectorAll('input[name="noteLoc"]:checked')].map(c => c.value);
+  const date = $("noteDate").value;
+  const text = $("noteText").value.trim();
+
+  if (items.length === 0) { $("noteItemError").textContent = "Please select at least one item."; valid = false; }
+  else if (valid) { $("noteItemError").textContent = ""; }
+  if (locs.length === 0) { $("noteLocError").textContent = "Please select at least one location."; valid = false; }
+  else { $("noteLocError").textContent = ""; }
+  if (!date) { $("noteDateError").textContent = "Please pick a date."; valid = false; }
+  else { $("noteDateError").textContent = ""; }
+  if (!valid) return;
+
+  const editId = $("editNoteDocId") ? $("editNoteDocId").value : "";
+  const btn = $("noteSubmitBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Saving…`;
+
+  try {
+    if (editId) {
+      await updateDoc(doc(db, "workNotes", editId), { items, locations: locs, date, note: text, usageCount: 0 });
+      logActivity("EDITED", `Updated note: ${items.join(', ')} at ${locs.join(', ')}`);
+      showToast("Note updated!", "success");
+      cancelNoteEdit();
+    } else {
+      await addDoc(collection(db, "workNotes"), { items, locations: locs, date, note: text, createdAt: serverTimestamp() });
+      logActivity("ADDED", `Added note: ${items.join(', ')} at ${locs.join(', ')}`);
+      showToast("Note saved!", "success");
+    }
+    $("noteEntryForm").reset();
+    $("noteOtherWrapper").classList.add("hidden");
+    if ($("noteOtherText")) $("noteOtherText").value = "";
+    if ($("noteDate")) $("noteDate").value = toISODate(new Date());
+  } catch (err) {
+    console.error(err);
+    showToast("Error saving note.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="ri-save-line"></i> <span id="noteSubmitBtnText">${editId ? 'Update Note' : 'Save Note'}</span>`;
+    if ($("noteSubmitBtnText")) $("noteSubmitBtnText").textContent = "Save Note";
+  }
+};
+
+// Pre-fill the form to edit an existing note
+window.editNote = function (id) {
+  const n = allNotes.find(x => x.id === id);
+  if (!n) return;
+  // scroll to form
+  $("notesFormWrapper").scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if ($("noteFormHeading")) $("noteFormHeading").textContent = "Edit Note";
+  if ($("noteSubmitBtnText")) $("noteSubmitBtnText").textContent = "Update Note";
+  if ($("editNoteDocId")) $("editNoteDocId").value = id;
+  if ($("noteCancelEditBtn")) $("noteCancelEditBtn").style.display = "";
+  // Set date
+  if ($("noteDate")) $("noteDate").value = n.date || "";
+  if ($("noteText")) $("noteText").value = n.note || "";
+  // Tick item checkboxes
+  document.querySelectorAll('input[name="noteItem"]').forEach(cb => {
+    cb.checked = (n.items || []).includes(cb.value);
+  });
+  // Tick location checkboxes
+  document.querySelectorAll('input[name="noteLoc"]').forEach(cb => {
+    cb.checked = (n.locations || []).includes(cb.value);
+  });
+};
+
+window.cancelNoteEdit = function () {
+  if ($("noteFormHeading")) $("noteFormHeading").textContent = "Add Note";
+  if ($("noteSubmitBtnText")) $("noteSubmitBtnText").textContent = "Save Note";
+  if ($("editNoteDocId")) $("editNoteDocId").value = "";
+  if ($("noteCancelEditBtn")) $("noteCancelEditBtn").style.display = "none";
+  $("noteEntryForm").reset();
+  $("noteOtherWrapper").classList.add("hidden");
+  if ($("noteDate")) $("noteDate").value = toISODate(new Date());
+};
+
+// Mark note as done = delete it immediately
+window.markNoteDone = async function (id) {
+  try {
+    await deleteDoc(doc(db, "workNotes", id));
+    logActivity("DELETED", "Marked note as done and removed it");
+    showToast("Note marked as done!", "success");
+  } catch (err) {
+    console.error(err);
+    showToast("Error removing note.", "error");
+  }
+};
+
+// ── Notes Firestore Listener ──────────────────────────
+function subscribeNotes() {
+  const q = query(collection(db, "workNotes"), orderBy("date", "desc"));
+  onSnapshot(q, snapshot => {
+    allNotes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderNotesTable(allNotes);
+    if (typeof allRecords !== 'undefined' && typeof renderTodayTable === 'function') {
+      renderTodayTable(allRecords);
+      renderTomorrowTable(allRecords);
+    }
+  }, err => {
+    console.error("Notes Firestore error:", err);
+  });
+}
+
+// ── Pending-note auto-fill helpers ───────────────────────
+// Build a hint string from notes that are still "pending" (usageCount < 2)
+// for the given array of location names.
+function getPendingNotesHint(locations) {
+  const lines = [];
+  locations.forEach(loc => {
+    const pending = allNotes.filter(n =>
+      Array.isArray(n.locations) && n.locations.includes(loc) &&
+      (n.usageCount || 0) < 2
+    );
+    pending.forEach(n => {
+      if (n.items && n.items.length) {
+        // Format: "[Mayavatie] Trash Bags, Coffee"
+        lines.push(`[${loc}] ${n.items.join(', ')}`);
+      }
+    });
+  });
+  return lines.join('\n');
+}
+
+// Pre-fill a notes textarea only if it is currently empty or was previously
+// auto-filled (starts with '[').
+function autoFillPendingNotes(locations, textareaId) {
+  const ta = $(textareaId);
+  if (!ta) return;
+  const current = ta.value;
+  // Only overwrite if blank or a previous auto-fill value
+  if (current && !current.startsWith('[')) return;
+  const hint = getPendingNotesHint(locations);
+  ta.value = hint;
+  if (hint) {
+    ta.classList.add('autofilled-note');
+  } else {
+    ta.classList.remove('autofilled-note');
+    ta.value = '';
+  }
+}
+
+
+
+// ── Notes Delete ─────────────────────────────────────────
+let pendingDeleteNoteId = null;
+
+window.deleteNote = function (docId) {
+  pendingDeleteNoteId = docId;
+  // Reuse the same confirm dialog
+  $("confirmOverlay").classList.remove("hidden");
+  $("confirmDeleteBtn").onclick = confirmDeleteNote;
+};
+
+async function confirmDeleteNote() {
+  if (!pendingDeleteNoteId) return;
+  const btn = $("confirmDeleteBtn");
+  btn.disabled = true;
+  btn.textContent = "Deleting…";
+  try {
+    await deleteDoc(doc(db, "workNotes", pendingDeleteNoteId));
+    logActivity("DELETED", "Deleted a note entry");
+    showToast("Note deleted.", "warning");
+  } catch (err) {
+    console.error(err);
+    showToast("Error deleting note.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Delete";
+    btn.onclick = confirmDelete; // restore original
+    pendingDeleteNoteId = null;
+    closeConfirm();
+  }
+}
+
+
+function renderNotesTable(notes) {
+  // ── Unified Pending Notes Overview (Dashboard & Notes Tab)
+  const pending = notes.filter(n => (n.usageCount || 0) < 2);
+  
+  // Update counts
+  const notesCount = $("pendingNotesCount");
+  const dashCount = $("dashPendingNotesCount");
+  if (notesCount) notesCount.textContent = pending.length > 0 ? `${pending.length}` : '';
+  if (dashCount) dashCount.textContent = pending.length > 0 ? `${pending.length}` : '';
+
+  // DOM Elements - Notes Tab
+  const notesEmpty = $("pendingNotesEmpty");
+  const notesContainer = $("pendingNotesListContainer");
+  const notesTbody = $("notesPendingTbody");
+
+  // DOM Elements - Dashboard
+  const dashEmpty = $('dashPendingNotesEmpty');
+  const dashContainer = $('dashPendingNotesList');
+  const dashTbody = $('dashPendingNotesTbody');
+
+  if (!pending.length) {
+    if (notesEmpty) notesEmpty.classList.remove('hidden');
+    if (notesContainer) notesContainer.classList.add('hidden');
+    if (dashEmpty) dashEmpty.classList.remove('hidden');
+    if (dashContainer) dashContainer.classList.add('hidden');
+  } else {
+    if (notesEmpty) notesEmpty.classList.add('hidden');
+    if (notesContainer) notesContainer.classList.remove('hidden');
+    if (dashEmpty) dashEmpty.classList.add('hidden');
+    if (dashContainer) dashContainer.classList.remove('hidden');
+
+    // Generate Desktop Table Rows
+    const rowsHtml = pending.map(n => {
+      const itemBadges = (n.items || []).map(i => `<span class="pnote-item">${escHtml(i)}</span>`).join(' ');
+      const locBadges = (n.locations || []).map(l => `<span class="dash-loc-chip"><i class="ri-building-line"></i>${escHtml(l)}</span>`).join(' ');
+      return `
+        <tr>
+          <td>${locBadges}</td>
+          <td>${itemBadges}</td>
+          <td style="max-width:180px;word-break:break-word;">${n.note ? escHtml(n.note) : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+          <td>${formatDate(n.date)}</td>
+          <td>
+            <div class="actions-cell">
+              <button class="btn btn-success btn-sm" onclick="markNoteDone('${n.id}')"><i class="ri-checkbox-circle-line"></i> Done</button>
+              <button class="btn btn-ghost btn-sm" onclick="editNote('${n.id}')"><i class="ri-edit-line"></i></button>
+              <button class="btn btn-del btn-sm" onclick="deleteNote('${n.id}')"><i class="ri-delete-bin-6-line"></i></button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+    if (notesTbody) notesTbody.innerHTML = rowsHtml;
+    if (dashTbody) dashTbody.innerHTML = rowsHtml;
+
+    // Generate Mobile Cards
+    const cardsHtml = pending.map(n => {
+      const itemText = (n.items || []).map(i => `<span class="pnote-item">${escHtml(i)}</span>`).join(' ') || '—';
+      const locText  = (n.locations || []).join(', ') || '—';
+      return `
+        <div class="work-card">
+          <div class="work-card-header">
+            <span class="dash-loc-chip"><i class="ri-building-line"></i>${escHtml(locText)}</span>
+          </div>
+          <div class="work-card-field" style="flex-wrap:wrap; gap:8px;">
+            <span class="work-card-label">Items</span>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">${itemText}</div>
+          </div>
+          ${n.note ? `<div class="work-card-note">${escHtml(n.note)}</div>` : ''}
+          <div class="work-card-field">
+            <span class="work-card-label">Date</span>
+            <span class="work-card-value">${formatDate(n.date)}</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button class="btn btn-success btn-sm" onclick="markNoteDone('${n.id}')"><i class="ri-checkbox-circle-line"></i> Done</button>
+            <button class="btn btn-ghost btn-sm" onclick="editNote('${n.id}')"><i class="ri-edit-line"></i></button>
+            <button class="btn btn-del btn-sm" onclick="deleteNote('${n.id}')"><i class="ri-delete-bin-6-line"></i></button>
+          </div>
+        </div>`;
+    }).join('');
+
+    // Inject mobile cards into Dashboard
+    if (dashContainer) {
+      const oldDashCards = dashContainer.querySelector('.work-card-list');
+      if (oldDashCards) oldDashCards.remove();
+      const dashCardsEl = document.createElement('div');
+      dashCardsEl.className = 'work-card-list';
+      dashCardsEl.innerHTML = cardsHtml;
+      dashContainer.appendChild(dashCardsEl);
+    }
+    
+    // Inject mobile cards into Notes tab
+    if (notesContainer) {
+      const oldNotesCards = notesContainer.querySelector('.work-card-list');
+      if (oldNotesCards) oldNotesCards.remove();
+      const notesCardsEl = document.createElement('div');
+      notesCardsEl.className = 'work-card-list';
+      notesCardsEl.innerHTML = cardsHtml;
+      notesContainer.appendChild(notesCardsEl);
+    }
+  }
+
+  // ── Notes History table
+  const spinner = $("notesSpinner");
+  const empty   = $("notesEmpty");
+  const wrapper = $("notesTableWrapper");
+  const tbody   = $("notesTableBody");
+
+  if (spinner) spinner.classList.add("hidden");
+
+  if (!notes.length) {
+    if (empty) empty.classList.remove("hidden");
+    if (wrapper) wrapper.classList.add("hidden");
+    return;
+  }
+  if (empty) empty.classList.add("hidden");
+  if (wrapper) wrapper.classList.remove("hidden");
+
+  tbody.innerHTML = notes.map(n => {
+    const isDone = (n.usageCount || 0) >= 2;
+    const itemBadges = (n.items || []).map(i =>
+      `<span class="pnote-item">${escHtml(i)}</span>`
+    ).join(' ');
+    const locBadges = (n.locations || []).map(l =>
+      `<span class="location-badge badge-${l.replace(/[^a-zA-Z0-9]/g, '')}">${escHtml(l)}</span>`
+    ).join(' ');
+    return `
+      <tr class="${isDone ? 'note-row-done' : ''}">
+        <td>${formatDate(n.date)}</td>
+        <td style="max-width:180px">${itemBadges}</td>
+        <td>${locBadges}</td>
+        <td style="max-width:200px;word-break:break-word">${n.note ? escHtml(n.note) : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+        <td>
+          <div class="actions-cell">
+            <button class="btn btn-ghost btn-sm" onclick="editNote('${n.id}')"><i class="ri-edit-line"></i></button>
+            <button class="btn btn-del" onclick="deleteNote('${n.id}')"><i class="ri-delete-bin-6-line"></i> Delete</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
 
 // ── "Check-in Not Provided / No Check In" toggle ──────────
 window.checkInSkipStates = {}; // Track state per location
@@ -293,8 +661,9 @@ window.updateDynamicDetailedBlocks = function () {
   });
   
   container.innerHTML = html;
-};
 
+  const selectedLocs = [...checkboxes].map(cb => cb.value);
+};
 window.toggleNoCheckIn = function (loc, stateType) {
   const btnNoCheckIn = $(`noCheckInBtn_${loc}`);
   const btnNotProvided = $(`notProvidedBtn_${loc}`);
@@ -563,6 +932,8 @@ window.updateDynamicHours = function () {
   });
   
   container.innerHTML = html;
+
+  const selectedLocs = [...checkboxes].map(cb => cb.value);
 };
 
 window.handleQuickSubmit = async function (e) {
@@ -763,13 +1134,14 @@ function updateStats(records) {
   const byLoc = loc => records.filter(r => r.location === loc).reduce((s, r) => s + (r.totalHours || 0), 0);
 
   const now = new Date();
+  const isoToday = toISODate(now);
 
   // Calculate this month's hours
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const isoMonthStart = toISODate(startOfMonth);
 
   const thisMonthHrs = records
-    .filter(r => r.date >= isoMonthStart && r.date <= toISODate(now))
+    .filter(r => r.date >= isoMonthStart && r.date <= isoToday)
     .reduce((s, r) => s + (r.totalHours || 0), 0);
 
   // Calculate this week's hours — week runs Mon → Sun (ISO week, Finnish time)
@@ -781,11 +1153,30 @@ function updateStats(records) {
   const isoWeekStart = toISODate(startOfWeek);
 
   const thisWeekHrs = records
-    .filter(r => r.date >= isoWeekStart && r.date <= toISODate(now))
+    .filter(r => r.date >= isoWeekStart && r.date <= isoToday)
+    .reduce((s, r) => s + (r.totalHours || 0), 0);
+
+  // Calculate today's hours
+  const todayHrs = records
+    .filter(r => r.date === isoToday)
+    .reduce((s, r) => s + (r.totalHours || 0), 0);
+
+  // Calculate previous week's hours (Mon–Sun of last week)
+  const prevSunday = new Date(startOfWeek);
+  prevSunday.setDate(startOfWeek.getDate() - 1);
+  const prevMonday = new Date(startOfWeek);
+  prevMonday.setDate(startOfWeek.getDate() - 7);
+  const isoPrevStart = toISODate(prevMonday);
+  const isoPrevEnd   = toISODate(prevSunday);
+
+  const prevWeekHrs = records
+    .filter(r => r.date >= isoPrevStart && r.date <= isoPrevEnd)
     .reduce((s, r) => s + (r.totalHours || 0), 0);
 
   if ($("statThisMonthHours")) $("statThisMonthHours").textContent = thisMonthHrs.toFixed(1);
-  if ($("statThisWeekHours")) $("statThisWeekHours").textContent = thisWeekHrs.toFixed(1);
+  if ($("statThisWeekHours")) $("statThisWeekHours").textContent  = thisWeekHrs.toFixed(1);
+  if ($("statTodayHours"))    $("statTodayHours").textContent     = todayHrs.toFixed(1) + "h";
+  if ($("statPrevWeekHours")) $("statPrevWeekHours").textContent  = prevWeekHrs.toFixed(1);
 
   $("statKotkansiipi").textContent = byLoc("Kotkansiipi").toFixed(1) + "h";
   $("statRautkallionkatu").textContent = byLoc("Rautkallionkatu").toFixed(1) + "h";
@@ -840,6 +1231,32 @@ function renderThisMonthTable(records) {
   `;
 }
 // ── Today's Work Table ─────────────────────────────────
+function getPendingHtmlForLoc(loc, isMobile = false, recordDateStr = null) {
+  if (typeof allNotes === 'undefined') return '';
+  const pending = allNotes.filter(n => {
+    if (!Array.isArray(n.locations) || !n.locations.includes(loc)) return false;
+    if ((n.usageCount || 0) >= 2) return false;
+    if (recordDateStr && n.date >= recordDateStr) return false;
+    return true;
+  });
+  if (!pending.length) return '';
+  const items = pending.flatMap(n => n.items || []);
+  if (!items.length) return '';
+  const uniqueItems = [...new Set(items)];
+
+  if (isMobile) {
+    return '<div class="work-card-field" style="grid-column:1 / -1; margin-top:2px;">' +
+           '<span class="work-card-label" style="margin-bottom:3px;">NOTES</span>' +
+           '<div style="display:flex;flex-wrap:wrap;gap:4px;">' + 
+           uniqueItems.map(i => `<span class="pnote-item" style="align-self:flex-start;"><i class="ri-sticky-note-line" style="color:var(--clr-text-muted);"></i> ${escHtml(i)}</span>`).join('') +
+           '</div></div>';
+  } else {
+    return '<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;">' + 
+           uniqueItems.map(i => `<span class="pnote-item"><i class="ri-sticky-note-line" style="color:var(--clr-text-muted);"></i> ${escHtml(i)}</span>`).join('') +
+           '</div>';
+  }
+}
+
 function renderTodayTable(records) {
   const todayDate = new Date();
   const isoToday = toISODate(todayDate);
@@ -864,16 +1281,21 @@ function renderTodayTable(records) {
   const totalHours = todayRecords.reduce((sum, r) => sum + (parseFloat(r.totalHours) || 0), 0);
 
   // ── Desktop table rows ──
-  const rowsHtml = todayRecords.map(r => `
-    <tr>
-      <td><span class="dash-loc-chip"><i class="ri-building-line"></i>${r.location}</span></td>
-      <td>${r.checkIn ? r.checkIn : (r.checkInSkipState === 'no_check_in' ? '<span style="color:var(--clr-text-muted);font-style:italic">No check-in</span>' : (r.checkInSkipState === 'not_provided' ? '<span style="color:var(--clr-text-muted);font-style:italic">Not provided</span>' : '<span style="color:var(--clr-text-muted)">—</span>'))}</td>
-      <td>${r.checkOut ? r.checkOut : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
-      <td><span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span></td>
-      <td>${r.guests || '—'}</td>
-      <td>${r.note ? escHtml(r.note) : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
-    </tr>
-  `).join("");
+  const rowsHtml = todayRecords.map(r => {
+    const pendingHtml = getPendingHtmlForLoc(r.location, false, r.date);
+    const noteContent = r.note ? escHtml(r.note) : '';
+    const finalNote = noteContent || pendingHtml ? `${noteContent}${pendingHtml}` : '<span style="color:var(--clr-text-muted)">—</span>';
+    return `
+      <tr>
+        <td><span class="dash-loc-chip"><i class="ri-building-line"></i>${r.location}</span></td>
+        <td>${r.checkIn ? r.checkIn : (r.checkInSkipState === 'no_check_in' ? '<span style="color:var(--clr-text-muted);font-style:italic">No check-in</span>' : (r.checkInSkipState === 'not_provided' ? '<span style="color:var(--clr-text-muted);font-style:italic">Not provided</span>' : '<span style="color:var(--clr-text-muted)">—</span>'))}</td>
+        <td>${r.checkOut ? r.checkOut : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+        <td><span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span></td>
+        <td>${r.guests || '—'}</td>
+        <td>${finalNote}</td>
+      </tr>
+    `;
+  }).join("");
 
   tbody.innerHTML = rowsHtml + `
     <tr class="dash-total-row">
@@ -897,6 +1319,8 @@ function renderTodayTable(records) {
       : '<span style="color:var(--clr-text-muted)">—</span>'));
     const checkOutText = r.checkOut || '<span style="color:var(--clr-text-muted)">—</span>';
     const noteHtml = r.note ? `<div class="work-card-note">${escHtml(r.note)}</div>` : '';
+    const pendingHtml = getPendingHtmlForLoc(r.location, true, r.date);
+    const finalNotesSection = `${noteHtml}${pendingHtml}`;
 
     return `
       <div class="work-card">
@@ -916,7 +1340,7 @@ function renderTodayTable(records) {
           <span class="work-card-label">Guests</span>
           <span class="work-card-value">${r.guests || '—'}</span>
         </div>
-        ${noteHtml}
+        ${finalNotesSection}
       </div>
     `;
   }).join('');
@@ -957,16 +1381,21 @@ function renderTomorrowTable(records) {
   const totalHours = tmrRecords.reduce((sum, r) => sum + (parseFloat(r.totalHours) || 0), 0);
 
   // ── Desktop table rows ──
-  const rowsHtml = tmrRecords.map(r => `
-    <tr>
-      <td><span class="dash-loc-chip"><i class="ri-building-line"></i>${r.location}</span></td>
-      <td>${r.checkIn ? r.checkIn : (r.checkInSkipState === 'no_check_in' ? '<span style="color:var(--clr-text-muted);font-style:italic">No check-in</span>' : (r.checkInSkipState === 'not_provided' ? '<span style="color:var(--clr-text-muted);font-style:italic">Not provided</span>' : '<span style="color:var(--clr-text-muted)">—</span>'))}</td>
-      <td>${r.checkOut ? r.checkOut : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
-      <td><span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span></td>
-      <td>${r.guests || '—'}</td>
-      <td>${r.note ? escHtml(r.note) : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
-    </tr>
-  `).join("");
+  const rowsHtml = tmrRecords.map(r => {
+    const pendingHtml = getPendingHtmlForLoc(r.location, false, r.date);
+    const noteContent = r.note ? escHtml(r.note) : '';
+    const finalNote = noteContent || pendingHtml ? `${noteContent}${pendingHtml}` : '<span style="color:var(--clr-text-muted)">—</span>';
+    return `
+      <tr>
+        <td><span class="dash-loc-chip"><i class="ri-building-line"></i>${r.location}</span></td>
+        <td>${r.checkIn ? r.checkIn : (r.checkInSkipState === 'no_check_in' ? '<span style="color:var(--clr-text-muted);font-style:italic">No check-in</span>' : (r.checkInSkipState === 'not_provided' ? '<span style="color:var(--clr-text-muted);font-style:italic">Not provided</span>' : '<span style="color:var(--clr-text-muted)">—</span>'))}</td>
+        <td>${r.checkOut ? r.checkOut : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+        <td><span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span></td>
+        <td>${r.guests || '—'}</td>
+        <td>${finalNote}</td>
+      </tr>
+    `;
+  }).join("");
 
   tbody.innerHTML = rowsHtml + `
     <tr class="dash-total-row">
@@ -990,6 +1419,8 @@ function renderTomorrowTable(records) {
       : '<span style="color:var(--clr-text-muted)">—</span>'));
     const checkOutText = r.checkOut || '<span style="color:var(--clr-text-muted)">—</span>';
     const noteHtml = r.note ? `<div class="work-card-note">${escHtml(r.note)}</div>` : '';
+    const pendingHtml = getPendingHtmlForLoc(r.location, true, r.date);
+    const finalNotesSection = `${noteHtml}${pendingHtml}`;
 
     return `
       <div class="work-card">
@@ -1009,7 +1440,7 @@ function renderTomorrowTable(records) {
           <span class="work-card-label">Guests</span>
           <span class="work-card-value">${r.guests || '—'}</span>
         </div>
-        ${noteHtml}
+        ${finalNotesSection}
       </div>
     `;
   }).join('');
@@ -1022,6 +1453,74 @@ function renderTomorrowTable(records) {
   `;
 
   wrapper.appendChild(cardListEl);
+}
+
+// ── Previous Week Table ───────────────────────────────────
+function renderPrevWeekTable(records) {
+  const now = new Date();
+  // ISO week: Mon=0 … Sun=6
+  const daysFromMonday = (now.getDay() + 6) % 7;
+
+  // This week's Monday
+  const thisMonday = new Date(now);
+  thisMonday.setDate(now.getDate() - daysFromMonday);
+  thisMonday.setHours(0, 0, 0, 0);
+
+  // Previous week: Mon = thisMonday - 7, Sun = thisMonday - 1
+  const prevMonday = new Date(thisMonday);
+  prevMonday.setDate(thisMonday.getDate() - 7);
+  const prevSunday = new Date(thisMonday);
+  prevSunday.setDate(thisMonday.getDate() - 1);
+
+  const isoPrevStart = toISODate(prevMonday);
+  const isoPrevEnd   = toISODate(prevSunday);
+
+  const empty   = $("prevWeekEmpty");
+  const wrapper = $("prevWeekTableWrapper");
+  const tbody   = $("prevWeekTableBody");
+  const title   = $("prevWeekTitle");
+  const totalEl = $("prevWeekTotal");
+
+  // Format heading date range like "9 Jun – 15 Jun"
+  const fmtShort = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  if (title) title.innerHTML = `<i class="ri-calendar-2-line"></i> Previous Week (${fmtShort(prevMonday)} – ${fmtShort(prevSunday)})`;
+
+  const prevRecords = records.filter(r => r.date >= isoPrevStart && r.date <= isoPrevEnd);
+  // Sort ascending so it reads Mon → Sun
+  prevRecords.sort((a, b) => a.date.localeCompare(b.date));
+
+  if (!prevRecords.length) {
+    if (empty)   empty.classList.remove("hidden");
+    if (wrapper) wrapper.classList.add("hidden");
+    if (totalEl) totalEl.textContent = "";
+    return;
+  }
+
+  if (empty)   empty.classList.add("hidden");
+  if (wrapper) wrapper.classList.remove("hidden");
+
+  const grandTotal = prevRecords.reduce((s, r) => s + (parseFloat(r.totalHours) || 0), 0);
+  if (totalEl) totalEl.innerHTML = `Total: <span class="hours-pill" style="background:var(--clr-primary);color:white;">${grandTotal.toFixed(2)}h</span>`;
+
+  const rowsHtml = prevRecords.map(r => `
+    <tr>
+      <td>${formatDate(r.date)}</td>
+      <td><span class="location-badge badge-${r.location.replace(/[^a-zA-Z0-9]/g, '')}">${r.location}</span></td>
+      <td>${r.checkIn ? r.checkIn : (r.checkInSkipState === 'no_check_in' ? '<span style="color:var(--clr-text-muted);font-style:italic">No check-in</span>' : (r.checkInSkipState === 'not_provided' ? '<span style="color:var(--clr-text-muted);font-style:italic">Not provided</span>' : '<span style="color:var(--clr-text-muted)">—</span>'))}</td>
+      <td>${r.checkOut ? r.checkOut : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+      <td><span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span></td>
+      <td>${r.guests || '—'}</td>
+      <td>${r.note ? escHtml(r.note) : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
+    </tr>
+  `).join("");
+
+  tbody.innerHTML = rowsHtml + `
+    <tr style="background: var(--clr-surface-2); font-weight: 700;">
+      <td colspan="4" style="text-align: right;">Total Working Hours:</td>
+      <td><span class="hours-pill" style="background: var(--clr-primary); color: white;">${grandTotal.toFixed(2)}h</span></td>
+      <td colspan="2"></td>
+    </tr>
+  `;
 }
 
 // ── Filters ────────────────────────────────────────────────
@@ -1075,7 +1574,7 @@ function renderRecordsTable(records) {
   const totalHours = records.reduce((sum, r) => sum + (parseFloat(r.totalHours) || 0), 0);
   const rowsHtml = records.map(r => `
     <tr>
-      <td>${formatDate(r.date)}</td>
+      <td>${formatDateWithDay(r.date)}</td>
       <td><span class="location-badge badge-${r.location.replace(/[^a-zA-Z0-9]/g, '')}">${r.location}</span></td>
       <td>${r.checkIn ? r.checkIn : (r.checkInSkipState === 'no_check_in' ? '<span style="color:var(--clr-text-muted);font-style:italic">No check-in</span>' : (r.checkInSkipState === 'not_provided' ? '<span style="color:var(--clr-text-muted);font-style:italic">Not provided</span>' : '<span style="color:var(--clr-text-muted)">—</span>'))}</td>
       <td>${r.checkOut ? r.checkOut : '<span style="color:var(--clr-text-muted)">—</span>'}</td>
@@ -1179,6 +1678,14 @@ function formatDate(iso) {
   if (!iso) return "—";
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
+}
+
+function formatDateWithDay(iso) {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const dayName = days[new Date(`${y}-${m}-${d}T12:00:00`).getDay()];
+  return `<span style="font-weight:600;">${dayName}</span><br><span style="font-size:12px;color:var(--clr-text-muted);">${d}/${m}/${y}</span>`;
 }
 
 function escHtml(str) {

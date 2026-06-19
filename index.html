@@ -38,6 +38,10 @@
         <i class="ri-add-circle-line"></i>
         <span>Add Entry</span>
       </a>
+      <a href="#notes" class="nav-item" id="nav-notes" onclick="showSection('notes', this)">
+        <i class="ri-sticky-note-line"></i>
+        <span>Notes</span>
+      </a>
       <a href="#records" class="nav-item" id="nav-records" onclick="showSection('records', this)">
         <i class="ri-file-list-3-line"></i>
         <span>Records</span>
@@ -97,6 +101,14 @@
             <span class="stat-value" id="statThisWeekHours" style="color:var(--clr-success);">0</span>
           </div>
         </div>
+        <div class="stat-card total-hours">
+          <div class="stat-icon" style="background:rgba(99,102,241,0.10);color:var(--clr-primary);"><i
+              class="ri-calendar-check-line"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Prev Week</span>
+            <span class="stat-value" id="statPrevWeekHours" style="color:var(--clr-primary);">0</span>
+          </div>
+        </div>
         <div class="stat-card loc-1">
           <div class="stat-icon"><i class="ri-building-line"></i></div>
           <div class="stat-info">
@@ -130,7 +142,13 @@
       <!-- Quick Actions -->
       <div class="dashboard-actions">
         <button class="btn btn-primary" onclick="showSection('add-entry', document.getElementById('nav-add'))">
-          <i class="ri-add-circle-line"></i> Add Entry
+          <i class="ri-add-circle-line"></i> Add Records
+        </button>
+        <button class="btn btn-success" onclick="goToWorkingHour()">
+          <i class="ri-flashlight-line"></i> Add Working Hour
+        </button>
+        <button class="btn btn-note" onclick="goToNote()">
+          <i class="ri-sticky-note-line"></i> Add Note
         </button>
       </div>
 
@@ -186,6 +204,34 @@
         </div>
       </div>
 
+      <!-- Dashboard Pending Notes -->
+      <div class="card mt-xl" id="dashPendingNotesCard">
+        <div class="card-header">
+          <h2 class="card-title"><i class="ri-sticky-note-line"></i> Pending Notes</h2>
+          <span id="dashPendingNotesCount" class="hours-pill"
+            style="background:var(--clr-surface-2);color:var(--clr-text-muted);"></span>
+        </div>
+        <div class="empty-state hidden" id="dashPendingNotesEmpty">
+          <i class="ri-checkbox-circle-line"></i>
+          <h3>All caught up!</h3>
+          <p>No pending supply notes.</p>
+        </div>
+        <div id="dashPendingNotesList" class="hidden">
+          <table class="data-table" id="dashPendingNotesTable">
+            <thead>
+              <tr>
+                <th>Location</th>
+                <th>Items</th>
+                <th>Note</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="dashPendingNotesTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
 
     </section>
 
@@ -213,19 +259,24 @@
               </label>
               <div class="checkbox-group" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
                 <label class="checkbox-label">
-                  <input type="checkbox" name="dLoc" value="Kotkansiipi" onchange="window.updateDynamicDetailedBlocks()"> Kotkansiipi
+                  <input type="checkbox" name="dLoc" value="Kotkansiipi"
+                    onchange="window.updateDynamicDetailedBlocks()"> Kotkansiipi
                 </label>
                 <label class="checkbox-label">
-                  <input type="checkbox" name="dLoc" value="Rautkallionkatu" onchange="window.updateDynamicDetailedBlocks()"> Rautkallionkatu
+                  <input type="checkbox" name="dLoc" value="Rautkallionkatu"
+                    onchange="window.updateDynamicDetailedBlocks()"> Rautkallionkatu
                 </label>
                 <label class="checkbox-label">
-                  <input type="checkbox" name="dLoc" value="Kakoisvayla" onchange="window.updateDynamicDetailedBlocks()"> Kakoisvayla
+                  <input type="checkbox" name="dLoc" value="Kakoisvayla"
+                    onchange="window.updateDynamicDetailedBlocks()"> Kakoisvayla
                 </label>
                 <label class="checkbox-label">
-                  <input type="checkbox" name="dLoc" value="Mayavatie" onchange="window.updateDynamicDetailedBlocks()"> Mayavatie
+                  <input type="checkbox" name="dLoc" value="Mayavatie" onchange="window.updateDynamicDetailedBlocks()">
+                  Mayavatie
                 </label>
                 <label class="checkbox-label">
-                  <input type="checkbox" name="dLoc" value="House Cleaning (Puistola)" onchange="window.updateDynamicDetailedBlocks()"> House Cleaning (Puistola)
+                  <input type="checkbox" name="dLoc" value="House Cleaning (Puistola)"
+                    onchange="window.updateDynamicDetailedBlocks()"> House Cleaning (Puistola)
                 </label>
               </div>
               <span class="field-error" id="locationError"></span>
@@ -241,7 +292,8 @@
             </div>
 
             <!-- Dynamic Detailed Container -->
-            <div id="dynamicDetailedContainer" style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 24px;">
+            <div id="dynamicDetailedContainer"
+              style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 24px;">
               <!-- Dynamic blocks injected here -->
             </div>
 
@@ -280,24 +332,28 @@
               </label>
               <div class="checkbox-group" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
                 <label class="checkbox-label">
-                  <input type="checkbox" name="qLoc" value="Kotkansiipi" onchange="window.updateDynamicHours()"> Kotkansiipi
+                  <input type="checkbox" name="qLoc" value="Kotkansiipi" onchange="window.updateDynamicHours()">
+                  Kotkansiipi
                 </label>
                 <label class="checkbox-label">
-                  <input type="checkbox" name="qLoc" value="Rautkallionkatu" onchange="window.updateDynamicHours()"> Rautkallionkatu
+                  <input type="checkbox" name="qLoc" value="Rautkallionkatu" onchange="window.updateDynamicHours()">
+                  Rautkallionkatu
                 </label>
                 <label class="checkbox-label">
-                  <input type="checkbox" name="qLoc" value="Kakoisvayla" onchange="window.updateDynamicHours()"> Kakoisvayla
+                  <input type="checkbox" name="qLoc" value="Kakoisvayla" onchange="window.updateDynamicHours()">
+                  Kakoisvayla
                 </label>
                 <label class="checkbox-label">
                   <input type="checkbox" name="qLoc" value="Mayavatie" onchange="window.updateDynamicHours()"> Mayavatie
                 </label>
                 <label class="checkbox-label">
-                  <input type="checkbox" name="qLoc" value="House Cleaning (Puistola)" onchange="window.updateDynamicHours()"> House Cleaning (Puistola)
+                  <input type="checkbox" name="qLoc" value="House Cleaning (Puistola)"
+                    onchange="window.updateDynamicHours()"> House Cleaning (Puistola)
                 </label>
               </div>
               <span class="field-error" id="qLocationError"></span>
             </div>
-            
+
             <div id="dynamicHoursContainer" class="form-grid" style="grid-column: 1 / -1;">
               <!-- Dynamic hours inputs injected here -->
             </div>
@@ -325,11 +381,248 @@
       </div>
     </section>
 
+    <!-- ── Notes Section ── -->
+    <section class="section" id="section-notes">
+      <div class="section-header">
+        <h1 class="section-title">Notes</h1>
+        <p class="section-sub">Manage supply notes and track pending reminders</p>
+      </div>
+
+
+      <!-- Add Note Form -->
+      <div class="card form-card" id="notesFormWrapper">
+        <h2 class="card-title" style="margin-bottom:20px;"><i class="ri-add-circle-line"
+            style="color:var(--clr-note);"></i> Add New Note</h2>
+        <form id="noteEntryForm" onsubmit="handleNoteSubmit(event)" novalidate>
+          <div class="form-grid">
+            <div class="form-group form-group-full">
+              <label class="form-label">
+                <i class="ri-price-tag-3-line"></i> Supply / Item <span class="required">*</span>
+              </label>
+              <div class="checkbox-group" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Tissue Paper"> Tissue
+                  Paper</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Coffee"> Coffee</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Sugar"> Sugar</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Kitchen Tissue"> Kitchen
+                  Tissue</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Spraying Liquid"> Spraying
+                  Liquid</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Dish Soap"> Dish
+                  Soap</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Trash Bags"> Trash
+                  Bags</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Shampoo"> Shampoo</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Hand Wash Refill"> Hand Wash
+                  Refill</label>
+                <label class="checkbox-label checkbox-label-other">
+                  <input type="checkbox" name="noteItem" value="__other__" id="noteItemOther"
+                    onchange="toggleNoteOther(this)">
+                  <i class="ri-add-circle-line" style="font-size:15px;color:var(--clr-primary);"></i> Other
+                </label>
+              </div>
+              <div id="noteOtherWrapper" class="hidden" style="margin-top:10px;">
+                <input type="text" id="noteOtherText" class="form-control" placeholder="Describe the item…"
+                  style="max-width:320px;" />
+              </div>
+              <span class="field-error" id="noteItemError"></span>
+            </div>
+
+            <div class="form-group form-group-full">
+              <label class="form-label">
+                <i class="ri-map-pin-2-line"></i> Location <span class="required">*</span>
+              </label>
+              <div class="checkbox-group" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Kotkansiipi"> Kotkansiipi</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Rautkallionkatu">
+                  Rautkallionkatu</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Kakoisvayla"> Kakoisvayla</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Mayavatie"> Mayavatie</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="House Cleaning (Puistola)"> House
+                  Cleaning (Puistola)</label>
+              </div>
+              <span class="field-error" id="noteLocError"></span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="noteDate">
+                <i class="ri-calendar-line"></i> Date Added <span class="required">*</span>
+              </label>
+              <input type="date" id="noteDate" class="form-control" required />
+              <span class="field-error" id="noteDateError"></span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="noteText">
+                <i class="ri-sticky-note-line"></i> Note / Details
+              </label>
+              <textarea id="noteText" class="form-control" rows="3" placeholder="Add any extra details…"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <input type="hidden" id="editNoteDocId" value="" />
+            <button type="submit" class="btn btn-note" id="noteSubmitBtn">
+              <i class="ri-save-line"></i> <span id="noteSubmitBtnText">Save Note</span>
+            </button>
+            <button type="button" class="btn btn-ghost" id="noteCancelEditBtn" onclick="cancelNoteEdit()"
+              style="display:none;">
+              <i class="ri-close-line"></i> Cancel Edit
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Pending Notes Overview -->
+      <div class="card mt-xl" id="pendingNotesCard">
+        <div class="card-header">
+          <h2 class="card-title"><i class="ri-alarm-warning-line"></i> Pending Notes</h2>
+          <span id="pendingNotesCount" class="hours-pill"
+            style="background:var(--clr-surface-2);color:var(--clr-text-muted);"></span>
+        </div>
+        <div class="empty-state hidden" id="pendingNotesEmpty">
+          <i class="ri-checkbox-circle-line"></i>
+          <h3>All caught up!</h3>
+          <p>No pending supply notes.</p>
+        </div>
+        <div id="pendingNotesListContainer" class="hidden">
+          <table class="data-table" id="pendingNotesTable">
+            <thead>
+              <tr>
+                <th>Location</th>
+                <th>Items</th>
+                <th>Note</th>
+                <th>Date Added</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="notesPendingTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add Note Form -->
+      <div class="card form-card mt-xl" id="notesFormWrapper">
+        <h2 class="card-title" style="margin-bottom:20px;"><i class="ri-add-circle-line"
+            style="color:var(--clr-note);"></i> Add New Note</h2>
+        <form id="noteEntryForm" onsubmit="handleNoteSubmit(event)" novalidate>
+          <div class="form-grid">
+            <div class="form-group form-group-full">
+              <label class="form-label">
+                <i class="ri-price-tag-3-line"></i> Supply / Item <span class="required">*</span>
+              </label>
+              <div class="checkbox-group" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Tissue Paper"> Tissue
+                  Paper</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Coffee"> Coffee</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Sugar"> Sugar</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Kitchen Tissue"> Kitchen
+                  Tissue</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Spraying Liquid"> Spraying
+                  Liquid</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Dish Soap"> Dish
+                  Soap</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Trash Bags"> Trash
+                  Bags</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Shampoo"> Shampoo</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Hand Wash Refill"> Hand Wash
+                  Refill</label>
+                <label class="checkbox-label checkbox-label-other">
+                  <input type="checkbox" name="noteItem" value="__other__" id="noteItemOther"
+                    onchange="toggleNoteOther(this)">
+                  <i class="ri-add-circle-line" style="font-size:15px;color:var(--clr-primary);"></i> Other
+                </label>
+              </div>
+              <div id="noteOtherWrapper" class="hidden" style="margin-top:10px;">
+                <input type="text" id="noteOtherText" class="form-control" placeholder="Describe the item…"
+                  style="max-width:320px;" />
+              </div>
+              <span class="field-error" id="noteItemError"></span>
+            </div>
+
+            <div class="form-group form-group-full">
+              <label class="form-label">
+                <i class="ri-map-pin-2-line"></i> Location <span class="required">*</span>
+              </label>
+              <div class="checkbox-group" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Kotkansiipi">
+                  Kotkansiipi</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Rautkallionkatu">
+                  Rautkallionkatu</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Kakoisvayla">
+                  Kakoisvayla</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Mayavatie"> Mayavatie</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="House Cleaning (Puistola)">
+                  House Cleaning (Puistola)</label>
+              </div>
+              <span class="field-error" id="noteLocError"></span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="noteDate">
+                <i class="ri-calendar-line"></i> Date Added <span class="required">*</span>
+              </label>
+              <input type="date" id="noteDate" class="form-control" required />
+              <span class="field-error" id="noteDateError"></span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="noteText">
+                <i class="ri-sticky-note-line"></i> Note / Details
+              </label>
+              <textarea id="noteText" class="form-control" rows="3" placeholder="Add any extra details…"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <input type="hidden" id="editNoteDocId" value="" />
+            <button type="submit" class="btn btn-note" id="noteSubmitBtn">
+              <i class="ri-save-line"></i> <span id="noteSubmitBtnText">Save Note</span>
+            </button>
+            <button type="button" class="btn btn-ghost" id="noteCancelEditBtn" onclick="cancelNoteEdit()"
+              style="display:none;">
+              <i class="ri-close-line"></i> Cancel Edit
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- All Notes History -->
+      <div class="card mt-xl">
+        <div class="card-header">
+          <h2 class="card-title"><i class="ri-history-line"></i> All Notes</h2>
+        </div>
+        <div class="loading-spinner" id="notesSpinner">
+          <div class="spinner"></div>
+          <p>Loading notes…</p>
+        </div>
+        <div class="empty-state hidden" id="notesEmpty">
+          <i class="ri-sticky-note-line"></i>
+          <h3>No notes yet</h3>
+          <p>Add a note using the form above.</p>
+        </div>
+        <div class="table-wrapper hidden" id="notesTableWrapper">
+          <table class="data-table" id="notesTable">
+            <thead>
+              <tr>
+                <th>Date Added</th>
+                <th>Items</th>
+                <th>Location</th>
+                <th>Note</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="notesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- ── Records Section ── -->
     <section class="section" id="section-records">
       <div class="section-header">
         <h1 class="section-title">Records</h1>
-        <p class="section-sub">All your logged work hours</p>
+        <p class="section-sub">All your logged working hours</p>
       </div>
 
       <!-- Filters -->
@@ -346,7 +639,8 @@
                 <input type="checkbox" name="filterLoc" value="Kotkansiipi" onchange="applyFilters()"> Kotkansiipi
               </label>
               <label class="checkbox-label">
-                <input type="checkbox" name="filterLoc" value="Rautkallionkatu" onchange="applyFilters()"> Rautkallionkatu
+                <input type="checkbox" name="filterLoc" value="Rautkallionkatu" onchange="applyFilters()">
+                Rautkallionkatu
               </label>
               <label class="checkbox-label">
                 <input type="checkbox" name="filterLoc" value="Kakoisvayla" onchange="applyFilters()"> Kakoisvayla
@@ -355,7 +649,8 @@
                 <input type="checkbox" name="filterLoc" value="Mayavatie" onchange="applyFilters()"> Mayavatie
               </label>
               <label class="checkbox-label">
-                <input type="checkbox" name="filterLoc" value="House Cleaning (Puistola)" onchange="applyFilters()"> House Cleaning (Puistola)
+                <input type="checkbox" name="filterLoc" value="House Cleaning (Puistola)" onchange="applyFilters()">
+                House Cleaning (Puistola)
               </label>
             </div>
           </div>
@@ -381,15 +676,19 @@
 
       <!-- Generate Summary -->
       <div class="export-row">
-        <button class="btn btn-primary" onclick="generateTextSummary()"><i class="ri-file-text-line"></i> Generate Summary</button>
+        <button class="btn btn-primary" onclick="generateTextSummary()"><i class="ri-file-text-line"></i> Generate
+          Summary</button>
       </div>
-      
+
       <div id="summaryContainer" class="card mt-md hidden" style="padding: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <h3 style="font-size: 16px; font-weight: 700; color: var(--clr-primary);"><i class="ri-file-list-3-line"></i> Generated Summary</h3>
-          <button class="btn btn-sm btn-ghost" onclick="copyTextSummary()"><i class="ri-clipboard-line"></i> Copy</button>
+          <h3 style="font-size: 16px; font-weight: 700; color: var(--clr-primary);"><i class="ri-file-list-3-line"></i>
+            Generated Summary</h3>
+          <button class="btn btn-sm btn-ghost" onclick="copyTextSummary()"><i class="ri-clipboard-line"></i>
+            Copy</button>
         </div>
-        <textarea id="summaryText" class="form-control" rows="6" readonly style="resize: vertical; line-height: 1.5; font-size: 14px;"></textarea>
+        <textarea id="summaryText" class="form-control" rows="6" readonly
+          style="resize: vertical; line-height: 1.5; font-size: 14px;"></textarea>
       </div>
 
       <!-- Records Table -->

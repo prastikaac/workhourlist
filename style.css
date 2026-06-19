@@ -30,6 +30,7 @@
   --clr-info: #0ea5e9;
   --clr-info-h: #0284c7;
   --clr-warning: #f59e0b;
+  --clr-note: #f59e0b;
 
   /* Sidebar */
   --sidebar-w: 240px;
@@ -366,6 +367,19 @@ textarea {
   letter-spacing: -0.5px;
 }
 
+.stat-sub-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  margin-top: 3px;
+  letter-spacing: 0.2px;
+}
+
+.stat-sub-label span {
+  color: var(--clr-success);
+  font-weight: 700;
+}
+
 /* Individual card colours */
 .total-hours .stat-icon {
   background: rgba(99, 102, 241, 0.12);
@@ -462,6 +476,8 @@ textarea {
 .dashboard-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-top: 4px;
   margin-bottom: 4px;
 }
@@ -472,6 +488,7 @@ textarea {
     justify-content: center;
   }
 }
+
 
 /* ── Form ── */
 .form-card {
@@ -546,6 +563,16 @@ textarea {
 
 .form-control.error:focus {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+/* Auto-filled from a pending supply note */
+.form-control.autofilled-note {
+  border-color: var(--clr-warning);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.form-control.autofilled-note:focus {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
 
 .form-control.disabled-input {
@@ -806,6 +833,137 @@ select.form-control {
 .btn-info:hover {
   background: var(--clr-info-h);
   transform: translateY(-1px);
+}
+
+/* Other checkbox label — distinct primary-tinted style */
+.checkbox-label-other {
+  border-style: dashed;
+  border-color: var(--clr-primary);
+  color: var(--clr-primary);
+}
+
+.checkbox-label-other:has(input:checked) {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+/* Other text input reveal */
+#noteOtherWrapper {
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Pending Note Cards */
+/* ── Pending Note Cards ─────────────────────────── */
+.pending-note-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--clr-border);
+  transition: background 0.15s;
+}
+
+.pending-note-card:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.pending-note-card:first-child {
+  padding-top: 0;
+}
+
+.pending-note-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pnote-locs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pnote-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--clr-text);
+}
+
+.pnote-loc i {
+  font-size: 13px;
+  color: var(--clr-text-muted);
+}
+
+.pnote-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pnote-item {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 6px;
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--clr-text);
+}
+
+.pnote-text {
+  font-size: 12.5px;
+  color: var(--clr-text-muted);
+  margin: 0;
+  font-style: italic;
+}
+
+.pnote-date {
+  font-size: 11px;
+  color: var(--clr-text-muted);
+}
+
+.pending-note-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .pending-note-card {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .pending-note-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+
+.btn-note {
+  background: #f59e0b;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+}
+
+.btn-note:hover {
+  background: #d97706;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
 }
 
 .btn-ghost {
@@ -1610,5 +1768,145 @@ select.form-control {
 
   .detailed-block {
     padding: 12px 10px;
+  }
+}
+
+/* ════════════════════════════════════════════════
+   RESPONSIVE — PENDING NOTES DASHBOARD TABLE
+   Switch to work-card-list on mobile (≤ 768px)
+   ════════════════════════════════════════════════ */
+.pnote-mobile-label {
+  display: none;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 768px) {
+  /* Show mobile-only label for notes inside work cards */
+  .pnote-mobile-label {
+    display: block;
+  }
+
+  /* Hide desktop table, show card list */
+  #dashPendingNotesTable,
+  #pendingNotesTable {
+    display: none;
+  }
+
+  /* Stats: 2 columns on tablet/mobile */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  /* Pending notes wrapper padding */
+  #pendingNotesList,
+  #dashPendingNotesList {
+    padding: 0 4px;
+  }
+
+  /* Notes section add-form grid → single column */
+  #section-notes .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #section-notes .form-group-full {
+    grid-column: 1;
+  }
+
+  /* Notes section card padding */
+  #section-notes .card {
+    padding-bottom: 16px;
+  }
+
+  /* Pending Notes in Notes section: card list wraps better */
+  #pendingNotesCard .pending-note-card {
+    flex-wrap: wrap;
+  }
+
+  /* Dashboard action buttons: full-width stack */
+  .dashboard-actions {
+    flex-direction: column;
+  }
+
+  .dashboard-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* All Notes table → horizontal scroll */
+  #notesTableWrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #notesTableWrapper .data-table {
+    min-width: 520px;
+  }
+
+  /* Prev week overview padding */
+  #prevWeekCard .card {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Stats: still 2 columns on small phones */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  /* Tighten card padding */
+  .card {
+    padding: 0;
+  }
+
+  .card-header {
+    padding: 14px 16px;
+  }
+
+  /* Pending note cards in Notes section stack */
+  #pendingNotesList {
+    padding: 0 16px 16px;
+    gap: 12px;
+  }
+
+  /* Table min-width for Records */
+  .data-table {
+    font-size: 13px;
+  }
+
+  /* Actions cell — keep inline, just shrink */
+  .actions-cell {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* Form tabs wrap */
+  .form-tabs {
+    flex-direction: column;
+  }
+
+  .form-tabs .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 360px) {
+  /* Single column stats on tiny phones */
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Stack action buttons */
+  .actions-cell {
+    flex-direction: column;
   }
 }
