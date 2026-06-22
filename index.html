@@ -501,92 +501,6 @@
         </div>
       </div>
 
-      <!-- Add Note Form -->
-      <div class="card form-card mt-xl" id="notesFormWrapper">
-        <h2 class="card-title" style="margin-bottom:20px;"><i class="ri-add-circle-line"
-            style="color:var(--clr-note);"></i> Add New Note</h2>
-        <form id="noteEntryForm" onsubmit="handleNoteSubmit(event)" novalidate>
-          <div class="form-grid">
-            <div class="form-group form-group-full">
-              <label class="form-label">
-                <i class="ri-price-tag-3-line"></i> Supply / Item <span class="required">*</span>
-              </label>
-              <div class="checkbox-group" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
-                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Tissue Paper"> Tissue
-                  Paper</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Coffee"> Coffee</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Sugar"> Sugar</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Kitchen Tissue"> Kitchen
-                  Tissue</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Spraying Liquid"> Spraying
-                  Liquid</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Dish Soap"> Dish
-                  Soap</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Trash Bags"> Trash
-                  Bags</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Shampoo"> Shampoo</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteItem" value="Hand Wash Refill"> Hand Wash
-                  Refill</label>
-                <label class="checkbox-label checkbox-label-other">
-                  <input type="checkbox" name="noteItem" value="__other__" id="noteItemOther"
-                    onchange="toggleNoteOther(this)">
-                  <i class="ri-add-circle-line" style="font-size:15px;color:var(--clr-primary);"></i> Other
-                </label>
-              </div>
-              <div id="noteOtherWrapper" class="hidden" style="margin-top:10px;">
-                <input type="text" id="noteOtherText" class="form-control" placeholder="Describe the item…"
-                  style="max-width:320px;" />
-              </div>
-              <span class="field-error" id="noteItemError"></span>
-            </div>
-
-            <div class="form-group form-group-full">
-              <label class="form-label">
-                <i class="ri-map-pin-2-line"></i> Location <span class="required">*</span>
-              </label>
-              <div class="checkbox-group" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
-                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Kotkansiipi">
-                  Kotkansiipi</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Rautkallionkatu">
-                  Rautkallionkatu</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Kakoisvayla">
-                  Kakoisvayla</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Mayavatie"> Mayavatie</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="House Cleaning (Puistola)">
-                  House Cleaning (Puistola)</label>
-              </div>
-              <span class="field-error" id="noteLocError"></span>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="noteDate">
-                <i class="ri-calendar-line"></i> Date Added <span class="required">*</span>
-              </label>
-              <input type="date" id="noteDate" class="form-control" required />
-              <span class="field-error" id="noteDateError"></span>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="noteText">
-                <i class="ri-sticky-note-line"></i> Note / Details
-              </label>
-              <textarea id="noteText" class="form-control" rows="3" placeholder="Add any extra details…"></textarea>
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <input type="hidden" id="editNoteDocId" value="" />
-            <button type="submit" class="btn btn-note" id="noteSubmitBtn">
-              <i class="ri-save-line"></i> <span id="noteSubmitBtnText">Save Note</span>
-            </button>
-            <button type="button" class="btn btn-ghost" id="noteCancelEditBtn" onclick="cancelNoteEdit()"
-              style="display:none;">
-              <i class="ri-close-line"></i> Cancel Edit
-            </button>
-          </div>
-        </form>
-      </div>
-
       <!-- All Notes History -->
       <div class="card mt-xl">
         <div class="card-header">
@@ -626,7 +540,7 @@
       </div>
 
       <!-- Filters -->
-      <div class="card filters-card">
+      <div class="card filters-card form-card">
         <div class="filters-header">
           <h2 class="card-title"><i class="ri-filter-3-line"></i> Filters</h2>
           <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="ri-refresh-line"></i> Reset</button>
@@ -656,20 +570,20 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="filterMonth">Month</label>
-            <input type="month" id="filterMonth" class="form-control" oninput="applyFilters()" />
+            <input type="month" id="filterMonth" class="form-control" oninput="applyFilters()" onchange="applyFilters()" />
           </div>
           <div class="form-group">
             <label class="form-label" for="filterStartDate">Start Date</label>
-            <input type="date" id="filterStartDate" class="form-control" oninput="applyFilters()" />
+            <input type="date" id="filterStartDate" class="form-control" oninput="applyFilters()" onchange="applyFilters()" />
           </div>
           <div class="form-group">
             <label class="form-label" for="filterEndDate">End Date</label>
-            <input type="date" id="filterEndDate" class="form-control" oninput="applyFilters()" />
+            <input type="date" id="filterEndDate" class="form-control" oninput="applyFilters()" onchange="applyFilters()" />
           </div>
           <div class="form-group form-group-full">
             <label class="form-label" for="filterNotes">Search Notes</label>
             <input type="text" id="filterNotes" class="form-control" placeholder="Search notes…"
-              oninput="applyFilters()" />
+              oninput="applyFilters()" onchange="applyFilters()" />
           </div>
         </div>
       </div>

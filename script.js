@@ -745,13 +745,11 @@ window.autoCalculateHours = function (loc) {
 }
 
 function renderActivitiesTable(activities) {
-  const wrapper = $("activitiesTableWrapper");
   const tbody = $("activitiesTableBody");
   if(!tbody) return;
 
   if (!activities.length) {
     tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--clr-text-muted)">No activities recorded yet.</td></tr>`;
-    renderActivitiesMobileCards([]);
     return;
   }
 
@@ -770,48 +768,6 @@ function renderActivitiesTable(activities) {
       </tr>
     `;
   }).join("");
-
-  renderActivitiesMobileCards(activities);
-}
-
-function renderActivitiesMobileCards(activities) {
-  const wrapper = $("activitiesTableWrapper");
-  if (!wrapper) return;
-
-  const existing = wrapper.querySelector(".activities-card-list");
-  if (existing) existing.remove();
-
-  if (!activities.length) return;
-
-  const cardList = document.createElement("div");
-  cardList.className = "activities-card-list";
-
-  cardList.innerHTML = activities.map(a => {
-    const timeStr = a.timestamp && a.timestamp.toDate ? a.timestamp.toDate().toLocaleString() : "Just now";
-    let actionBadge = "";
-    let actClass = "";
-    if (a.action === "ADDED") {
-      actionBadge = '<span class="location-badge" style="background:var(--clr-success);color:white">Added</span>';
-      actClass = "act-added";
-    } else if (a.action === "EDITED") {
-      actionBadge = '<span class="location-badge" style="background:var(--clr-primary);color:white">Edited</span>';
-      actClass = "act-edited";
-    } else if (a.action === "DELETED") {
-      actionBadge = '<span class="location-badge" style="background:var(--clr-danger);color:white">Deleted</span>';
-      actClass = "act-deleted";
-    }
-    return `
-      <div class="activity-card ${actClass}">
-        <div class="activity-card-header">
-          ${actionBadge}
-          <span class="activity-card-time">${timeStr}</span>
-        </div>
-        <p class="activity-card-message">${escHtml(a.message || "")}</p>
-      </div>
-    `;
-  }).join("");
-
-  wrapper.appendChild(cardList);
 }
 
 // ── Form Validation ────────────────────────────────────────
@@ -1610,7 +1566,6 @@ function renderRecordsTable(records) {
   if (!records.length) {
     empty.classList.remove("hidden");
     wrapper.classList.add("hidden");
-    renderRecordsMobileCards([], 0);
     return;
   }
   empty.classList.add("hidden");
@@ -1642,71 +1597,6 @@ function renderRecordsTable(records) {
       <td colspan="3"></td>
     </tr>
   `;
-
-  renderRecordsMobileCards(records, totalHours);
-}
-
-function renderRecordsMobileCards(records, totalHours) {
-  const wrapper = $("recordsTableWrapper");
-  if (!wrapper) return;
-  const card = wrapper.closest(".card");
-  if (!card) return;
-
-  const existing = card.querySelector(".records-card-list");
-  if (existing) existing.remove();
-
-  if (!records || !records.length) return;
-
-  const cardList = document.createElement("div");
-  cardList.className = "records-card-list";
-
-  cardList.innerHTML = records.map(r => {
-    const checkInText = r.checkIn ? r.checkIn
-      : (r.checkInSkipState === 'no_check_in' ? '<em style="color:var(--clr-text-muted)">No check-in</em>'
-      : (r.checkInSkipState === 'not_provided' ? '<em style="color:var(--clr-text-muted)">Not provided</em>'
-      : '<span style="color:var(--clr-text-muted)">—</span>'));
-    const checkOutText = r.checkOut || '<span style="color:var(--clr-text-muted)">—</span>';
-    const noteHtml = r.note ? `<div class="work-card-note">${escHtml(r.note)}</div>` : '';
-    const locBadgeClass = r.location.replace(/[^a-zA-Z0-9]/g, '');
-    return `
-      <div class="work-card">
-        <div class="work-card-header">
-          <span class="location-badge badge-${locBadgeClass}">${r.location}</span>
-          <span class="hours-pill">${r.totalHours ? r.totalHours.toFixed(2) + 'h' : '—'}</span>
-        </div>
-        <div class="work-card-field">
-          <span class="work-card-label">Date</span>
-          <span class="work-card-value">${formatDate(r.date)}</span>
-        </div>
-        <div class="work-card-field">
-          <span class="work-card-label">Check-In</span>
-          <span class="work-card-value">${checkInText}</span>
-        </div>
-        <div class="work-card-field">
-          <span class="work-card-label">Check-Out</span>
-          <span class="work-card-value">${checkOutText}</span>
-        </div>
-        <div class="work-card-field">
-          <span class="work-card-label">Guests</span>
-          <span class="work-card-value">${r.guests || '—'}</span>
-        </div>
-        ${noteHtml}
-        <div class="actions-cell" style="margin-top:6px;">
-          <button class="btn btn-edit" onclick="editEntry('${r.id}')"><i class="ri-edit-line"></i> Edit</button>
-          <button class="btn btn-del" onclick="deleteEntry('${r.id}')"><i class="ri-delete-bin-6-line"></i> Delete</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  cardList.innerHTML += `
-    <div class="work-card-total">
-      Total Working Hours:
-      <span class="hours-pill" style="background:var(--clr-primary);color:#fff;">${(totalHours||0).toFixed(2)}h</span>
-    </div>
-  `;
-
-  card.appendChild(cardList);
 }
 
 // ── Generate Text Summary ──────────────────────────────────
