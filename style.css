@@ -1033,6 +1033,13 @@ select.form-control {
 /* ── Table ── */
 .table-wrapper {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* This Month table wrapper needs overflow-x scroll on mobile too */
+#thisMonthTableWrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .data-table {
@@ -1119,6 +1126,7 @@ select.form-control {
 .actions-cell {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* ── Dashboard work-list tables (Today / Tomorrow) ── */
@@ -1172,13 +1180,75 @@ select.form-control {
   flex-shrink: 0;
 }
 
-/* ── Mobile card list for Today / Tomorrow tables ── */
+/* ── Mobile card list for Today / Tomorrow / Records / Activities tables ── */
 /* Hidden on desktop, revealed on mobile */
 .work-card-list {
   display: none;
   flex-direction: column;
   gap: 10px;
   padding: 12px 16px 16px;
+}
+
+/* Records mobile card list — always visible on mobile, hidden on desktop */
+.records-card-list {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px 16px;
+}
+
+/* Activities mobile card list */
+.activities-card-list {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 16px;
+}
+
+/* Activity card */
+.activity-card {
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.activity-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+
+.activity-card.act-added::before   { background: var(--clr-success); }
+.activity-card.act-edited::before  { background: var(--clr-primary); }
+.activity-card.act-deleted::before { background: var(--clr-danger); }
+
+.activity-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.activity-card-time {
+  font-size: 11.5px;
+  color: var(--clr-text-muted);
+}
+
+.activity-card-message {
+  font-size: 13.5px;
+  color: var(--clr-text);
+  line-height: 1.4;
 }
 
 .work-card {
@@ -1559,16 +1629,32 @@ select.form-control {
     justify-content: center;
   }
 
-  /* Records & this-month tables: horizontal scroll (many columns + actions) */
-  .table-wrapper,
+  /* Records table: switch to card list on mobile */
+  #recordsTableWrapper {
+    display: none;
+  }
+
+  .records-card-list {
+    display: flex;
+  }
+
+  /* Activities table: switch to card list on mobile */
+  #activitiesTableWrapper .data-table {
+    display: none;
+  }
+
+  .activities-card-list {
+    display: flex;
+  }
+
+  /* This-month table: horizontal scroll */
   #thisMonthTableWrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  .table-wrapper .data-table,
   #thisMonthTableWrapper .data-table {
-    min-width: 560px;
+    min-width: 520px;
   }
 
   /* Today / Tomorrow: switch to card list, hide table */
@@ -1725,10 +1811,11 @@ select.form-control {
     grid-template-columns: 1fr;
   }
 
-  /* Actions cell in table: stack buttons */
-  .actions-cell {
-    flex-direction: column;
-    gap: 4px;
+  /* Actions cell in records card — keep inline */
+  .work-card .actions-cell {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   .form-card {
@@ -1753,6 +1840,13 @@ select.form-control {
   .btn-no-checkin {
     flex: 1 1 100%;
     padding: 9px 10px;
+  }
+
+  /* Records & Activity cards — full action buttons */
+  .work-card .btn-edit,
+  .work-card .btn-del {
+    flex: 1;
+    justify-content: center;
   }
 }
 
