@@ -1557,9 +1557,20 @@ select.form-control {
     justify-content: center;
   }
 
-  /* Always keep form-card padding on mobile */
+  /* Always keep form-card padding on mobile, and remove overflow:hidden
+     so iOS Safari can properly route touch/focus events to textareas.
+     overflow:hidden on a card that contains a textarea blocks iOS tap routing. */
   .form-card {
     padding: 18px 16px !important;
+    overflow: visible !important;
+  }
+
+  /* Textareas: enable text selection and remove resize handle on mobile
+     (resize has no effect on touch screens and can interfere with taps) */
+  textarea.form-control {
+    -webkit-user-select: text;
+    user-select: text;
+    resize: none;
   }
 
   .form-actions {
@@ -1661,9 +1672,11 @@ select.form-control {
     padding: 16px !important;
   }
 
-  /* Dynamic detailed blocks (Cleanup Info) */
+  /* Dynamic detailed blocks (Cleanup Info) — overflow:visible so iOS
+     routes touch events correctly inside injected .card.detailed-block */
   .detailed-block {
     padding: 18px 16px;
+    overflow: visible !important;
   }
 
   .detailed-block h3 {
@@ -1879,9 +1892,15 @@ select.form-control {
     gap: 10px;
   }
 
-  /* Tighten card padding — but keep form-card padding intact */
-  .card:not(.form-card) {
+  /* Tighten card padding — but keep form-card AND detailed-block padding intact */
+  .card:not(.form-card):not(.detailed-block) {
     padding: 0;
+  }
+
+  /* Detailed blocks: keep their own padding override */
+  .detailed-block {
+    padding: 14px 12px !important;
+    overflow: visible !important;
   }
 
   .card-header {
