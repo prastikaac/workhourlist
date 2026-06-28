@@ -1182,6 +1182,7 @@ function updateStats(records) {
   $("statRautkallionkatu").textContent = byLoc("Rautkallionkatu").toFixed(1) + "h";
   $("statKakoisvayla").textContent = byLoc("Kakoisvayla").toFixed(1) + "h";
   $("statMayavatie").textContent = byLoc("Mayavatie").toFixed(1) + "h";
+  if ($("statRiskilakuja")) $("statRiskilakuja").textContent = byLoc("Riskil\u00e4kuja").toFixed(1) + "h";
 }
 
 // ── This Month Table ──────────────────────────────────────

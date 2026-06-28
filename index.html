@@ -137,6 +137,13 @@
             <span class="stat-value" id="statMayavatie">0h</span>
           </div>
         </div>
+        <div class="stat-card loc-5">
+          <div class="stat-icon"><i class="ri-building-line"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Riskiläkuja</span>
+            <span class="stat-value" id="statRiskilakuja">0h</span>
+          </div>
+        </div>
       </div>
 
       <!-- Quick Actions -->
@@ -278,6 +285,10 @@
                   <input type="checkbox" name="dLoc" value="House Cleaning (Puistola)"
                     onchange="window.updateDynamicDetailedBlocks()"> House Cleaning (Puistola)
                 </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="dLoc" value="Riskiläkuja"
+                    onchange="window.updateDynamicDetailedBlocks()"> Riskiläkuja
+                </label>
               </div>
               <span class="field-error" id="locationError"></span>
             </div>
@@ -349,6 +360,10 @@
                 <label class="checkbox-label">
                   <input type="checkbox" name="qLoc" value="House Cleaning (Puistola)"
                     onchange="window.updateDynamicHours()"> House Cleaning (Puistola)
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="qLoc" value="Riskiläkuja"
+                    onchange="window.updateDynamicHours()"> Riskiläkuja
                 </label>
               </div>
               <span class="field-error" id="qLocationError"></span>
@@ -440,6 +455,7 @@
                 <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Mayavatie"> Mayavatie</label>
                 <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="House Cleaning (Puistola)"> House
                   Cleaning (Puistola)</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Riskiläkuja"> Riskiläkuja</label>
               </div>
               <span class="field-error" id="noteLocError"></span>
             </div>
@@ -565,6 +581,9 @@
               <label class="checkbox-label">
                 <input type="checkbox" name="filterLoc" value="House Cleaning (Puistola)" onchange="applyFilters()">
                 House Cleaning (Puistola)
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" name="filterLoc" value="Riskiläkuja" onchange="applyFilters()"> Riskiläkuja
               </label>
             </div>
           </div>
