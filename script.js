@@ -797,6 +797,7 @@ function validateForm() {
   // Validate dynamic blocks
   checkboxes.forEach(cb => {
     const loc = cb.value;
+    const isPuistola = loc === "House Cleaning (Puistola)";
     const skipState = window.checkInSkipStates[loc] || false;
 
     // Work Hours (always required)
@@ -810,6 +811,10 @@ function validateForm() {
       if(hoursErr) hoursErr.textContent = "";
       if(hours) hours.classList.remove("error");
     }
+
+    // House Cleaning (Puistola) uses a simplified form — no check-in skip
+    // buttons and no guests field, so skip those validations entirely.
+    if (isPuistola) return;
 
     // Check-In (required UNLESS skipped)
     if (!skipState) {
