@@ -80,8 +80,18 @@
     <!-- ── Dashboard Section ── -->
     <section class="section active" id="section-dashboard">
       <div class="section-header">
-        <h1 class="section-title">Dashboard</h1>
-        <p class="section-sub">Overview of your work hours</p>
+        <div class="dash-section-top">
+          <div class="dash-title-group">
+            <h1 class="section-title">Dashboard</h1>
+            <p class="section-sub">Overview of your work hours</p>
+          </div>
+          <button class="btn-dash-filter" id="dashFilterBtn" onclick="openDashFilter()">
+            <i class="ri-filter-3-line"></i>
+            <span>Filter</span>
+            <span class="dash-filter-dot hidden" id="dashFilterDot"></span>
+          </button>
+        </div>
+        <div id="dashActivePills" class="dash-active-pills"></div>
       </div>
 
       <!-- Stat Cards -->
@@ -89,7 +99,7 @@
         <div class="stat-card total-hours">
           <div class="stat-icon"><i class="ri-time-line"></i></div>
           <div class="stat-info">
-            <span class="stat-label">This Month</span>
+            <span class="stat-label" id="statLabel1">This Month</span>
             <span class="stat-value" id="statThisMonthHours">0</span>
           </div>
         </div>
@@ -97,7 +107,7 @@
           <div class="stat-icon" style="background:rgba(16,185,129,0.12);color:var(--clr-success);"><i
               class="ri-calendar-event-line"></i></div>
           <div class="stat-info">
-            <span class="stat-label">This Week</span>
+            <span class="stat-label" id="statLabel2">This Week</span>
             <span class="stat-value" id="statThisWeekHours" style="color:var(--clr-success);">0</span>
           </div>
         </div>
@@ -105,7 +115,7 @@
           <div class="stat-icon" style="background:rgba(99,102,241,0.10);color:var(--clr-primary);"><i
               class="ri-calendar-check-line"></i></div>
           <div class="stat-info">
-            <span class="stat-label">Prev Week</span>
+            <span class="stat-label" id="statLabel3">Prev Week</span>
             <span class="stat-value" id="statPrevWeekHours" style="color:var(--clr-primary);">0</span>
           </div>
         </div>
@@ -149,7 +159,7 @@
       <!-- Quick Actions -->
       <div class="dashboard-actions">
         <button class="btn btn-primary" onclick="showSection('add-entry', document.getElementById('nav-add'))">
-          <i class="ri-add-circle-line"></i> Add Records
+          <i class="ri-add-circle-line"></i> Add Work Info
         </button>
         <button class="btn btn-success" onclick="goToWorkingHour()">
           <i class="ri-flashlight-line"></i> Add Working Hour
@@ -251,7 +261,7 @@
 
       <!-- Form Tabs -->
       <div class="form-tabs" style="display:flex;gap:12px;margin-bottom:24px;">
-        <button class="btn btn-primary" id="tabDetailed" onclick="switchFormTab('detailed')">Cleanup Info</button>
+        <button class="btn btn-primary" id="tabDetailed" onclick="switchFormTab('detailed')">Work Info</button>
         <button class="btn btn-ghost" id="tabQuick" onclick="switchFormTab('quick')">Working Hour</button>
       </div>
 
@@ -308,14 +318,6 @@
               <!-- Dynamic blocks injected here -->
             </div>
 
-            <!-- Notes -->
-            <div class="form-group form-group-full">
-              <label class="form-label" for="notes">
-                <i class="ri-sticky-note-line"></i> Notes
-              </label>
-              <textarea id="notes" class="form-control" rows="3"
-                placeholder="Optional notes about the work…"></textarea>
-            </div>
 
           </div>
 
@@ -362,8 +364,8 @@
                     onchange="window.updateDynamicHours()"> House Cleaning (Puistola)
                 </label>
                 <label class="checkbox-label">
-                  <input type="checkbox" name="qLoc" value="Riskiläkuja"
-                    onchange="window.updateDynamicHours()"> Riskiläkuja
+                  <input type="checkbox" name="qLoc" value="Riskiläkuja" onchange="window.updateDynamicHours()">
+                  Riskiläkuja
                 </label>
               </div>
               <span class="field-error" id="qLocationError"></span>
@@ -448,14 +450,18 @@
                 <i class="ri-map-pin-2-line"></i> Location <span class="required">*</span>
               </label>
               <div class="checkbox-group" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
-                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Kotkansiipi"> Kotkansiipi</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Kotkansiipi">
+                  Kotkansiipi</label>
                 <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Rautkallionkatu">
                   Rautkallionkatu</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Kakoisvayla"> Kakoisvayla</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Kakoisvayla">
+                  Kakoisvayla</label>
                 <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Mayavatie"> Mayavatie</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="House Cleaning (Puistola)"> House
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="House Cleaning (Puistola)">
+                  House
                   Cleaning (Puistola)</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Riskiläkuja"> Riskiläkuja</label>
+                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Riskiläkuja">
+                  Riskiläkuja</label>
               </div>
               <span class="field-error" id="noteLocError"></span>
             </div>
@@ -561,6 +567,15 @@
           <h2 class="card-title"><i class="ri-filter-3-line"></i> Filters</h2>
           <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="ri-refresh-line"></i> Reset</button>
         </div>
+
+        <!-- Quick Period Buttons -->
+        <div class="rec-quick-periods" id="recQuickPeriods">
+          <button class="rec-qp-btn" id="recQpThisWeek" onclick="setRecPeriod('this_week')">This Week</button>
+          <button class="rec-qp-btn" id="recQpPrevWeek" onclick="setRecPeriod('prev_week')">Prev Week</button>
+          <button class="rec-qp-btn" id="recQpThisMonth" onclick="setRecPeriod('this_month')">This Month</button>
+          <button class="rec-qp-btn" id="recQpPrevMonth" onclick="setRecPeriod('prev_month')">Prev Month</button>
+        </div>
+
         <div class="filters-grid">
           <div class="form-group form-group-full">
             <label class="form-label"><i class="ri-map-pin-2-line"></i> Location</label>
@@ -589,15 +604,18 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="filterMonth">Month</label>
-            <input type="month" id="filterMonth" class="form-control" oninput="applyFilters()" onchange="applyFilters()" />
+            <input type="month" id="filterMonth" class="form-control" oninput="applyFilters()"
+              onchange="applyFilters()" />
           </div>
           <div class="form-group">
             <label class="form-label" for="filterStartDate">Start Date</label>
-            <input type="date" id="filterStartDate" class="form-control" oninput="applyFilters()" onchange="applyFilters()" />
+            <input type="date" id="filterStartDate" class="form-control" oninput="onRecDateFilterChange()"
+              onchange="onRecDateFilterChange()" />
           </div>
           <div class="form-group">
             <label class="form-label" for="filterEndDate">End Date</label>
-            <input type="date" id="filterEndDate" class="form-control" oninput="applyFilters()" onchange="applyFilters()" />
+            <input type="date" id="filterEndDate" class="form-control" oninput="onRecDateFilterChange()"
+              onchange="onRecDateFilterChange()" />
           </div>
           <div class="form-group form-group-full">
             <label class="form-label" for="filterNotes">Search Notes</label>
@@ -709,6 +727,76 @@
 
   <!-- ───── Toast Container ───── -->
   <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ───── Dashboard Filter Modal ───── -->
+  <div class="modal-overlay hidden" id="dashFilterOverlay" onclick="closeDashFilterOnBg(event)">
+    <div class="dash-filter-modal" id="dashFilterModal">
+      <!-- Header -->
+      <div class="dfm-header">
+        <div class="dfm-title-row">
+          <div class="dfm-title-icon"><i class="ri-filter-3-line"></i></div>
+          <div>
+            <h3 class="dfm-title">Dashboard Filter</h3>
+            <p class="dfm-sub">Refine what the dashboard shows</p>
+          </div>
+        </div>
+        <button class="dfm-close" onclick="closeDashFilter()" aria-label="Close"><i class="ri-close-line"></i></button>
+      </div>
+
+      <!-- Period Chips -->
+      <div class="dfm-section">
+        <label class="dfm-label"><i class="ri-calendar-2-line"></i> Time Period</label>
+        <div class="dfm-chips" id="dfmPeriodChips">
+          <button class="dfm-chip active" id="dfmChipThisMonth" data-period="this_month"
+            onclick="selectDfmPeriod(this)">This Month</button>
+          <button class="dfm-chip" id="dfmChipLastMonth" data-period="last_month" onclick="selectDfmPeriod(this)">Last
+            Month</button>
+          <button class="dfm-chip" data-period="this_week" onclick="selectDfmPeriod(this)">This Week</button>
+          <button class="dfm-chip" data-period="last_week" onclick="selectDfmPeriod(this)">Last Week</button>
+          <button class="dfm-chip" data-period="custom" onclick="selectDfmPeriod(this)"><i class="ri-calendar-line"></i>
+            Custom</button>
+        </div>
+      </div>
+
+      <!-- Custom Range (shown only when Custom chip selected) -->
+      <div class="dfm-section dfm-custom-range hidden" id="dfmCustomRange">
+        <label class="dfm-label"><i class="ri-calendar-range-line"></i> Custom Date Range</label>
+        <div class="dfm-date-row">
+          <div class="dfm-date-group">
+            <span class="dfm-date-label">From</span>
+            <input type="date" id="dfmFrom" class="form-control" />
+          </div>
+          <div class="dfm-date-sep"><i class="ri-arrow-right-line"></i></div>
+          <div class="dfm-date-group">
+            <span class="dfm-date-label">To</span>
+            <input type="date" id="dfmTo" class="form-control" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Location Chips -->
+      <div class="dfm-section">
+        <label class="dfm-label"><i class="ri-map-pin-2-line"></i> Location <span class="dfm-optional">(all if none
+            selected)</span></label>
+        <div class="dfm-loc-chips" id="dfmLocChips">
+          <button class="dfm-chip dfm-loc-chip" data-loc="Kotkansiipi" onclick="toggleDfmLoc(this)">Kotkansiipi</button>
+          <button class="dfm-chip dfm-loc-chip" data-loc="Rautkallionkatu"
+            onclick="toggleDfmLoc(this)">Rautkallionkatu</button>
+          <button class="dfm-chip dfm-loc-chip" data-loc="Kakoisvayla" onclick="toggleDfmLoc(this)">Kakoisvayla</button>
+          <button class="dfm-chip dfm-loc-chip" data-loc="Mayavatie" onclick="toggleDfmLoc(this)">Mayavatie</button>
+          <button class="dfm-chip dfm-loc-chip" data-loc="Riskiläkuja" onclick="toggleDfmLoc(this)">Riskiläkuja</button>
+          <button class="dfm-chip dfm-loc-chip" data-loc="House Cleaning (Puistola)" onclick="toggleDfmLoc(this)">House
+            Cleaning</button>
+        </div>
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="dfm-footer">
+        <button class="btn btn-ghost" onclick="resetDashFilter()"><i class="ri-refresh-line"></i> Reset</button>
+        <button class="btn btn-primary" onclick="applyDashFilter()"><i class="ri-check-line"></i> Apply Filter</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ───── Confirm Dialog ───── -->
   <div class="modal-overlay hidden" id="confirmOverlay">

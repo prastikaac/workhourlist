@@ -67,6 +67,8 @@ document.addEventListener("DOMContentLoaded", () => {
   subscribeFirestore();
   subscribeNotes();
   subscribeActivities();
+  // Set live month names on Records quick-period buttons
+  setTimeout(updateRecQpLabels, 0);
 });
 
 // ── Set tomorrow's date as default ────────────────────────
@@ -531,11 +533,13 @@ window.updateDynamicDetailedBlocks = function () {
   const existingValues = {};
   container.querySelectorAll('.detailed-block').forEach(block => {
     const loc = block.dataset.loc;
+    const noteEl = block.querySelector('.d-locnote');
     existingValues[loc] = {
       checkOut: block.querySelector('.d-checkout').value,
-      checkIn: block.querySelector('.d-checkin').value,
-      hours: block.querySelector('.d-hours').value,
-      guests: block.querySelector('.d-guests').value,
+      checkIn:  block.querySelector('.d-checkin').value,
+      hours:    block.querySelector('.d-hours').value,
+      guests:   block.querySelector('.d-guests').value,
+      locNote:  noteEl ? noteEl.value : '',
     };
   });
 
@@ -545,9 +549,10 @@ window.updateDynamicDetailedBlocks = function () {
     const isPuistola = loc === "House Cleaning (Puistola)";
     const vals = existingValues[loc] || { 
       checkOut: isPuistola ? "20:30" : "", 
-      checkIn: isPuistola ? "18:00" : "15:00", 
-      hours: isPuistola ? "2.5" : "2", 
-      guests: "" 
+      checkIn:  isPuistola ? "18:00" : "15:00", 
+      hours:    isPuistola ? "2.5" : "2", 
+      guests:   "",
+      locNote:  ""
     };
 
     if (isPuistola) {
@@ -588,6 +593,14 @@ window.updateDynamicDetailedBlocks = function () {
             </div>
             
             <input type="hidden" id="guests_${loc}" class="d-guests" value="" />
+
+            <!-- Per-location Note -->
+            <div class="form-group form-group-full">
+              <label class="form-label" for="locNote_${loc}">
+                <i class="ri-sticky-note-line"></i> Note <span class="label-loc">(${loc})</span>
+              </label>
+              <textarea id="locNote_${loc}" class="form-control d-locnote" rows="2" placeholder="Optional note for ${loc}…">${vals.locNote}</textarea>
+            </div>
           </div>
         </div>
       `;
@@ -652,6 +665,14 @@ window.updateDynamicDetailedBlocks = function () {
               </label>
               <input type="number" id="guests_${loc}" class="form-control d-guests" min="0" placeholder="e.g. 2" value="${vals.guests}" />
               <span class="field-error" id="guestsError_${loc}"></span>
+            </div>
+
+            <!-- Per-location Note -->
+            <div class="form-group form-group-full">
+              <label class="form-label" for="locNote_${loc}">
+                <i class="ri-sticky-note-line"></i> Note <span class="label-loc">(${loc})</span>
+              </label>
+              <textarea id="locNote_${loc}" class="form-control d-locnote" rows="2" placeholder="Optional note for ${loc}…">${vals.locNote}</textarea>
             </div>
 
           </div>
@@ -856,7 +877,6 @@ window.handleFormSubmit = async function (e) {
   btn.innerHTML = `<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Saving…`;
 
   const dateVal = $("date").value;
-  const notesVal = $("notes").value.trim();
   const checkboxes = document.querySelectorAll('input[name="dLoc"]:checked');
   const editId = $("editDocId").value;
 
@@ -865,6 +885,9 @@ window.handleFormSubmit = async function (e) {
     const loc = cb.value;
     const skipState = window.checkInSkipStates[loc] || false;
     const totalHours = parseFloat($(`workHours_${loc}`).value) || 0;
+    // Read the per-location note
+    const locNoteEl = $(`locNote_${loc}`);
+    const locNoteVal = locNoteEl ? locNoteEl.value.trim() : '';
     
     submissions.push({
       location: loc,
@@ -874,7 +897,7 @@ window.handleFormSubmit = async function (e) {
       checkOut: $(`checkOut_${loc}`).value || "",
       totalHours: totalHours,
       guests: parseInt($(`guests_${loc}`).value) || "",
-      note: notesVal,
+      note: locNoteVal,
     });
   });
 
@@ -1050,6 +1073,8 @@ window.editEntry = function (docId) {
   if ($(`checkIn_${loc}`) && rec.checkInSkipState === false) {
     $(`checkIn_${loc}`).value = rec.checkIn || "15:00";
   }
+  // Restore per-location note
+  if ($(`locNote_${loc}`)) $(`locNote_${loc}`).value = rec.note || "";
 
   // Switch to Detailed Tab if not already on it
   switchFormTab("detailed");
@@ -1136,37 +1161,33 @@ function subscribeActivities() {
 
 // ── Stats ─────────────────────────────────────────────────
 function updateStats(records) {
-  const byLoc = loc => records.filter(r => r.location === loc).reduce((s, r) => s + (r.totalHours || 0), 0);
+  // Get the date range from the current filter
+  const { from, to } = getDashDateRange();
 
+  // Apply date range
+  let filtered = records.filter(r => r.date >= from && r.date <= to);
+
+  // Apply location filter (if any selected)
+  if (dashFilter.locations.length > 0) {
+    filtered = filtered.filter(r => dashFilter.locations.includes(r.location));
+  }
+
+  // Total hours for the filtered period
+  const totalHrs = filtered.reduce((s, r) => s + (r.totalHours || 0), 0);
+
+  // Per-location totals (within filtered period & locations)
+  const byLoc = loc => filtered.filter(r => r.location === loc).reduce((s, r) => s + (r.totalHours || 0), 0);
+
+  // Now compute the three comparison cards based on period
   const now = new Date();
   const isoToday = toISODate(now);
 
-  // Calculate this month's hours
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const isoMonthStart = toISODate(startOfMonth);
-
-  const thisMonthHrs = records
-    .filter(r => r.date >= isoMonthStart && r.date <= isoToday)
-    .reduce((s, r) => s + (r.totalHours || 0), 0);
-
-  // Calculate this week's hours — week runs Mon → Sun (ISO week, Finnish time)
-  // (getDay()+6)%7 maps Mon=0, Tue=1, … Sun=6
   const daysFromMonday = (now.getDay() + 6) % 7;
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - daysFromMonday);
   startOfWeek.setHours(0, 0, 0, 0);
   const isoWeekStart = toISODate(startOfWeek);
 
-  const thisWeekHrs = records
-    .filter(r => r.date >= isoWeekStart && r.date <= isoToday)
-    .reduce((s, r) => s + (r.totalHours || 0), 0);
-
-  // Calculate today's hours
-  const todayHrs = records
-    .filter(r => r.date === isoToday)
-    .reduce((s, r) => s + (r.totalHours || 0), 0);
-
-  // Calculate previous week's hours (Mon–Sun of last week)
   const prevSunday = new Date(startOfWeek);
   prevSunday.setDate(startOfWeek.getDate() - 1);
   const prevMonday = new Date(startOfWeek);
@@ -1174,20 +1195,46 @@ function updateStats(records) {
   const isoPrevStart = toISODate(prevMonday);
   const isoPrevEnd   = toISODate(prevSunday);
 
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const isoMonthStart = toISODate(startOfMonth);
+
+  // Card 1: total hours in selected period
+  // Card 2: this week (always fixed, for quick reference)
+  // Card 3: prev week (always fixed, for quick reference)
+  const thisWeekHrs = records
+    .filter(r => r.date >= isoWeekStart && r.date <= isoToday)
+    .reduce((s, r) => s + (r.totalHours || 0), 0);
+
   const prevWeekHrs = records
     .filter(r => r.date >= isoPrevStart && r.date <= isoPrevEnd)
     .reduce((s, r) => s + (r.totalHours || 0), 0);
 
-  if ($("statThisMonthHours")) $("statThisMonthHours").textContent = thisMonthHrs.toFixed(1);
-  if ($("statThisWeekHours")) $("statThisWeekHours").textContent  = thisWeekHrs.toFixed(1);
-  if ($("statTodayHours"))    $("statTodayHours").textContent     = todayHrs.toFixed(1) + "h";
-  if ($("statPrevWeekHours")) $("statPrevWeekHours").textContent  = prevWeekHrs.toFixed(1);
+  // Update period labels — just the month name or period + "Total"
+  const { thisMonth, lastMonth } = getDashMonthNames();
+  const periodLabels = {
+    this_month: `${thisMonth} Total`,
+    last_month: `${lastMonth} Total`,
+    this_week:  'This Week',
+    last_week:  'Last Week',
+    custom:     'Custom Period'
+  };
+  const periodLabel = periodLabels[dashFilter.period] || `${thisMonth} Total`;
+  if ($('statLabel1')) $('statLabel1').textContent = periodLabel;
+  if ($('statLabel2')) $('statLabel2').textContent = 'This Week';
+  if ($('statLabel3')) $('statLabel3').textContent = 'Prev Week';
 
-  $("statKotkansiipi").textContent = byLoc("Kotkansiipi").toFixed(1) + "h";
-  $("statRautkallionkatu").textContent = byLoc("Rautkallionkatu").toFixed(1) + "h";
-  $("statKakoisvayla").textContent = byLoc("Kakoisvayla").toFixed(1) + "h";
-  $("statMayavatie").textContent = byLoc("Mayavatie").toFixed(1) + "h";
-  if ($("statRiskilakuja")) $("statRiskilakuja").textContent = byLoc("Riskil\u00e4kuja").toFixed(1) + "h";
+  if ($('statThisMonthHours')) $('statThisMonthHours').textContent = totalHrs.toFixed(1);
+  if ($('statThisWeekHours'))  $('statThisWeekHours').textContent  = thisWeekHrs.toFixed(1);
+  if ($('statPrevWeekHours'))  $('statPrevWeekHours').textContent  = prevWeekHrs.toFixed(1);
+
+  $('statKotkansiipi').textContent    = byLoc('Kotkansiipi').toFixed(1) + 'h';
+  $('statRautkallionkatu').textContent = byLoc('Rautkallionkatu').toFixed(1) + 'h';
+  $('statKakoisvayla').textContent    = byLoc('Kakoisvayla').toFixed(1) + 'h';
+  $('statMayavatie').textContent      = byLoc('Mayavatie').toFixed(1) + 'h';
+  if ($('statRiskilakuja')) $('statRiskilakuja').textContent = byLoc('Riskiläkuja').toFixed(1) + 'h';
+
+  // Render pills on the dashboard header
+  renderDashActivePills();
 }
 
 // ── This Month Table ──────────────────────────────────────
@@ -1553,12 +1600,80 @@ window.applyFilters = function () {
 };
 
 window.clearFilters = function () {
-  // Uncheck all location checkboxes
   document.querySelectorAll('input[name="filterLoc"]').forEach(cb => cb.checked = false);
   ["filterMonth", "filterStartDate", "filterEndDate", "filterNotes"]
     .forEach(id => { const el = $(id); if (el) el.value = ""; });
+  // Clear quick-period active state
+  document.querySelectorAll('.rec-qp-btn').forEach(b => b.classList.remove('active'));
   applyFilters();
 };
+
+// Called when user manually edits the date fields — deactivates quick buttons
+window.onRecDateFilterChange = function () {
+  document.querySelectorAll('.rec-qp-btn').forEach(b => b.classList.remove('active'));
+  applyFilters();
+};
+
+// Quick-period selector for Records
+window.setRecPeriod = function (period) {
+  const MONTHS = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+  const now = new Date();
+  let from = '', to = '';
+
+  if (period === 'this_week') {
+    const daysFromMon = (now.getDay() + 6) % 7;
+    const mon = new Date(now); mon.setDate(now.getDate() - daysFromMon); mon.setHours(0,0,0,0);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    from = toISODate(mon); to = toISODate(sun);
+  } else if (period === 'prev_week') {
+    const daysFromMon = (now.getDay() + 6) % 7;
+    const thisMon = new Date(now); thisMon.setDate(now.getDate() - daysFromMon); thisMon.setHours(0,0,0,0);
+    const lastMon = new Date(thisMon); lastMon.setDate(thisMon.getDate() - 7);
+    const lastSun = new Date(thisMon); lastSun.setDate(thisMon.getDate() - 1);
+    from = toISODate(lastMon); to = toISODate(lastSun);
+  } else if (period === 'this_month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    from = toISODate(start); to = toISODate(end);
+  } else if (period === 'prev_month') {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end   = new Date(now.getFullYear(), now.getMonth(), 0);
+    from = toISODate(start); to = toISODate(end);
+  }
+
+  // Apply to date inputs
+  if ($('filterStartDate')) $('filterStartDate').value = from;
+  if ($('filterEndDate'))   $('filterEndDate').value   = to;
+  if ($('filterMonth'))     $('filterMonth').value     = '';
+
+  // Highlight active button
+  document.querySelectorAll('.rec-qp-btn').forEach(b => b.classList.remove('active'));
+  const idMap = {
+    this_week: 'recQpThisWeek', prev_week: 'recQpPrevWeek',
+    this_month: 'recQpThisMonth', prev_month: 'recQpPrevMonth'
+  };
+  const activeBtn = $(idMap[period]);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  // Update button labels with live month names
+  updateRecQpLabels();
+  applyFilters();
+};
+
+// Update the month-name labels on the quick-period buttons
+function updateRecQpLabels() {
+  const MONTHS = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+  const now = new Date();
+  const thisM = MONTHS[now.getMonth()];
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevM = MONTHS[prevDate.getMonth()];
+  const btnThis = $('recQpThisMonth');
+  const btnPrev = $('recQpPrevMonth');
+  if (btnThis) btnThis.textContent = `This Month (${thisM})`;
+  if (btnPrev) btnPrev.textContent = `Prev Month (${prevM})`;
+}
 
 // ── Records Table ─────────────────────────────────────────
 function renderRecordsTable(records) {
@@ -1689,7 +1804,7 @@ function formatDate(iso) {
 function formatDateWithDay(iso) {
   if (!iso) return "—";
   const [y, m, d] = iso.split("-");
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const dayName = days[new Date(`${y}-${m}-${d}T12:00:00`).getDay()];
   return `<span style="font-weight:600;">${dayName}</span><br><span style="font-size:12px;color:var(--clr-text-muted);">${d}/${m}/${y}</span>`;
 }
@@ -1705,3 +1820,177 @@ function escHtml(str) {
 // ── Initialization ─────────────────────────────────────────
 // Note: subscribeFirestore(), subscribeActivities(), setDefaultDate(),
 // and initTheme() are called inside the DOMContentLoaded handler above.
+
+// ── Dashboard Filter State ─────────────────────────────────
+let dashFilter = {
+  period: 'this_month',   // this_month | last_month | this_week | last_week | custom
+  fromDate: '',
+  toDate: '',
+  locations: []           // [] = all locations
+};
+
+// Helper: return current and previous month names
+function getDashMonthNames() {
+  const MONTHS = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+  const now = new Date();
+  const thisMon = MONTHS[now.getMonth()];
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMon  = MONTHS[prevDate.getMonth()];
+  return { thisMonth: thisMon, lastMonth: lastMon };
+}
+
+// Open the modal
+window.openDashFilter = function () {
+  // Inject live month names into the chips
+  const { thisMonth, lastMonth } = getDashMonthNames();
+  const chipThis = $('dfmChipThisMonth');
+  const chipLast = $('dfmChipLastMonth');
+  if (chipThis) chipThis.textContent = `This Month (${thisMonth})`;
+  if (chipLast) chipLast.textContent = `Last Month (${lastMonth})`;
+
+  // Sync UI to current state
+  document.querySelectorAll('.dfm-chip[data-period]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.period === dashFilter.period);
+  });
+  document.querySelectorAll('.dfm-loc-chip').forEach(btn => {
+    btn.classList.toggle('active', dashFilter.locations.includes(btn.dataset.loc));
+  });
+  const customRange = $('dfmCustomRange');
+  if (dashFilter.period === 'custom') customRange.classList.remove('hidden');
+  else customRange.classList.add('hidden');
+  if ($('dfmFrom')) $('dfmFrom').value = dashFilter.fromDate;
+  if ($('dfmTo'))   $('dfmTo').value   = dashFilter.toDate;
+  $('dashFilterOverlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+};
+
+// Close the modal
+window.closeDashFilter = function () {
+  $('dashFilterOverlay').classList.add('hidden');
+  document.body.style.overflow = '';
+};
+
+// Close on backdrop click
+window.closeDashFilterOnBg = function (e) {
+  if (e.target === $('dashFilterOverlay')) closeDashFilter();
+};
+
+// Period chip click
+window.selectDfmPeriod = function (btn) {
+  document.querySelectorAll('.dfm-chip[data-period]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const period = btn.dataset.period;
+  const customRange = $('dfmCustomRange');
+  if (period === 'custom') customRange.classList.remove('hidden');
+  else customRange.classList.add('hidden');
+};
+
+// Location chip toggle
+window.toggleDfmLoc = function (btn) {
+  btn.classList.toggle('active');
+};
+
+// Apply the filter
+window.applyDashFilter = function () {
+  const activePeriodBtn = document.querySelector('.dfm-chip[data-period].active');
+  dashFilter.period = activePeriodBtn ? activePeriodBtn.dataset.period : 'this_month';
+  dashFilter.fromDate = $('dfmFrom') ? $('dfmFrom').value : '';
+  dashFilter.toDate   = $('dfmTo')   ? $('dfmTo').value   : '';
+  dashFilter.locations = [...document.querySelectorAll('.dfm-loc-chip.active')].map(b => b.dataset.loc);
+  closeDashFilter();
+  updateStats(allRecords);
+  renderDashActivePills();
+};
+
+// Reset the filter
+window.resetDashFilter = function () {
+  dashFilter = { period: 'this_month', fromDate: '', toDate: '', locations: [] };
+  document.querySelectorAll('.dfm-chip[data-period]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.period === 'this_month');
+  });
+  document.querySelectorAll('.dfm-loc-chip').forEach(btn => btn.classList.remove('active'));
+  $('dfmCustomRange').classList.add('hidden');
+  if ($('dfmFrom')) $('dfmFrom').value = '';
+  if ($('dfmTo'))   $('dfmTo').value   = '';
+  closeDashFilter();
+  updateStats(allRecords);
+  renderDashActivePills();
+};
+
+// Compute the ISO date range for the active filter period
+function getDashDateRange() {
+  const now = new Date();
+  const isoToday = toISODate(now);
+
+  if (dashFilter.period === 'this_month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { from: toISODate(start), to: isoToday };
+  }
+
+  if (dashFilter.period === 'last_month') {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end   = new Date(now.getFullYear(), now.getMonth(), 0);
+    return { from: toISODate(start), to: toISODate(end) };
+  }
+
+  if (dashFilter.period === 'this_week') {
+    const daysFromMon = (now.getDay() + 6) % 7;
+    const start = new Date(now); start.setDate(now.getDate() - daysFromMon); start.setHours(0,0,0,0);
+    const end   = new Date(start); end.setDate(start.getDate() + 6);
+    return { from: toISODate(start), to: toISODate(end) };
+  }
+
+  if (dashFilter.period === 'last_week') {
+    const daysFromMon = (now.getDay() + 6) % 7;
+    const thisMon = new Date(now); thisMon.setDate(now.getDate() - daysFromMon); thisMon.setHours(0,0,0,0);
+    const lastMon = new Date(thisMon); lastMon.setDate(thisMon.getDate() - 7);
+    const lastSun = new Date(thisMon); lastSun.setDate(thisMon.getDate() - 1);
+    return { from: toISODate(lastMon), to: toISODate(lastSun) };
+  }
+
+  if (dashFilter.period === 'custom') {
+    return { from: dashFilter.fromDate || '0000-01-01', to: dashFilter.toDate || '9999-12-31' };
+  }
+
+  // fallback → this month
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  return { from: toISODate(start), to: isoToday };
+}
+
+// Render active-filter pills under the header
+function renderDashActivePills() {
+  const pillsEl = $('dashActivePills');
+  if (!pillsEl) return;
+
+  const dot = $('dashFilterDot');
+  const isFiltered = dashFilter.period !== 'this_month' || dashFilter.locations.length > 0;
+
+  // Dot indicator on the filter button
+  if (dot) dot.classList.toggle('hidden', !isFiltered);
+
+  // Build human-readable label with live month names
+  const { thisMonth, lastMonth } = getDashMonthNames();
+  const periodLabels = {
+    this_month: `This Month (${thisMonth})`,
+    last_month: `Last Month (${lastMonth})`,
+    this_week:  'This Week',
+    last_week:  'Last Week',
+    custom:     'Custom Range'
+  };
+
+  let html = '';
+  html += `<span class="dap-pill"><i class="ri-calendar-2-line"></i>${periodLabels[dashFilter.period] || `This Month (${thisMonth})`}</span>`;
+
+  if (dashFilter.period === 'custom' && (dashFilter.fromDate || dashFilter.toDate)) {
+    const f = dashFilter.fromDate ? formatDate(dashFilter.fromDate) : '…';
+    const t = dashFilter.toDate   ? formatDate(dashFilter.toDate)   : '…';
+    html += `<span class="dap-pill"><i class="ri-calendar-range-line"></i>${f} → ${t}</span>`;
+  }
+
+  dashFilter.locations.forEach(loc => {
+    html += `<span class="dap-pill"><i class="ri-building-line"></i>${loc}</span>`;
+  });
+
+  pillsEl.innerHTML = html;
+}
