@@ -1053,7 +1053,6 @@ window.editEntry = function (docId) {
   if (!rec) return;
 
   $("date").value = rec.date;
-  $("notes").value = rec.note || "";
   $("editDocId").value = docId;
 
   const checkboxes = document.querySelectorAll('input[name="dLoc"]');
@@ -1070,7 +1069,7 @@ window.editEntry = function (docId) {
   if ($(`checkOut_${loc}`)) $(`checkOut_${loc}`).value = rec.checkOut || "";
   if ($(`workHours_${loc}`)) $(`workHours_${loc}`).value = rec.totalHours || 2;
   if ($(`guests_${loc}`)) $(`guests_${loc}`).value = rec.guests || "";
-  if ($(`checkIn_${loc}`) && rec.checkInSkipState === false) {
+  if ($(`checkIn_${loc}`) && !rec.checkInSkipState) {
     $(`checkIn_${loc}`).value = rec.checkIn || "15:00";
   }
   // Restore per-location note
