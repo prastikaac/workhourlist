@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description"
     content="Professional Work Hour Tracker — log, manage, and export your work hours across multiple locations with real-time Firebase sync." />
-  <title>WorkTrack — Hour Tracker</title>
+  <title>WorkTrack | AirBnb Cleaning</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -21,6 +21,40 @@
 </head>
 
 <body>
+  <!-- ───── Login Overlay ───── -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-card">
+      <div class="login-logo">
+        <i class="ri-time-line login-logo-icon"></i>
+        <span class="login-logo-text">WorkTrack</span>
+      </div>
+      <h2 class="login-title">Sign In</h2>
+      <p class="login-sub">Sign in as worker or admin to access your dashboard</p>
+      <form id="loginForm" onsubmit="handleLogin(event)" novalidate>
+        <div class="login-field">
+          <label class="login-label"><i class="ri-user-line"></i> Username</label>
+          <input type="text" id="loginUsername" class="login-input" placeholder="Enter your username"
+            autocomplete="username" required />
+        </div>
+        <div class="login-field">
+          <label class="login-label"><i class="ri-lock-line"></i> Password</label>
+          <div class="login-pw-row">
+            <input type="password" id="loginPassword" class="login-input" placeholder="Enter your password"
+              autocomplete="current-password" required />
+            <button type="button" class="login-eye-btn" id="loginEyeBtn" onclick="toggleLoginPw()">
+              <i class="ri-eye-line" id="loginEyeIcon"></i>
+            </button>
+          </div>
+        </div>
+        <div class="login-error hidden" id="loginError">
+          <i class="ri-error-warning-line"></i> <span id="loginErrorMsg">Invalid username or password.</span>
+        </div>
+        <button type="submit" class="login-btn" id="loginBtn">
+          <span id="loginBtnText"><i class="ri-login-circle-line"></i> Sign In</span>
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- ───── Sidebar ───── -->
   <aside class="sidebar" id="sidebar">
@@ -34,6 +68,13 @@
         <i class="ri-dashboard-3-line"></i>
         <span>Dashboard</span>
       </a>
+      <a href="#approvals" class="nav-item" id="nav-approvals" onclick="showSection('approvals', this)"
+        style="display:none;position:relative;">
+        <i class="ri-shield-check-line"></i>
+        <span>Approvals</span>
+        <span id="navApprovalBadge" class="hours-pill hidden"
+          style="background:var(--clr-danger);color:#fff;margin-left:auto;padding:2px 8px;font-size:11px;font-weight:700;border-radius:999px;display:inline-flex;align-items:center;gap:2px;box-shadow:0 2px 6px rgba(239,68,68,0.35);"></span>
+      </a>
       <a href="#add-entry" class="nav-item" id="nav-add" onclick="showSection('add-entry', this)">
         <i class="ri-add-circle-line"></i>
         <span>Add Entry</span>
@@ -46,6 +87,10 @@
         <i class="ri-file-list-3-line"></i>
         <span>Records</span>
       </a>
+      <a href="#admin" class="nav-item" id="nav-admin" onclick="showSection('admin', this)" style="display:none">
+        <i class="ri-shield-user-line"></i>
+        <span>Admin Tools</span>
+      </a>
       <a href="#activities" class="nav-item" id="nav-activities" onclick="showSection('activities', this)">
         <i class="ri-history-line"></i>
         <span>Activities</span>
@@ -56,6 +101,15 @@
       <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">
         <i class="ri-moon-line" id="themeIcon"></i>
         <span id="themeLabel">Dark Mode</span>
+      </button>
+      <button class="theme-toggle" id="changePwBtn" onclick="openChangePwModal()" title="Change Password"
+        style="display:none;margin-top:6px;">
+        <i class="ri-key-2-line"></i>
+        <span>Change Password</span>
+      </button>
+      <button class="logout-btn" id="logoutBtn" onclick="handleLogout()" title="Logout" style="display:none">
+        <i class="ri-logout-circle-r-line"></i>
+        <span>Logout (<span id="loggedInUser"></span>)</span>
       </button>
     </div>
   </aside>
@@ -126,13 +180,6 @@
             <span class="stat-value" id="statKotkansiipi">0h</span>
           </div>
         </div>
-        <div class="stat-card loc-2">
-          <div class="stat-icon"><i class="ri-building-line"></i></div>
-          <div class="stat-info">
-            <span class="stat-label">Rautkallionkatu</span>
-            <span class="stat-value" id="statRautkallionkatu">0h</span>
-          </div>
-        </div>
         <div class="stat-card loc-3">
           <div class="stat-icon"><i class="ri-building-line"></i></div>
           <div class="stat-info">
@@ -188,6 +235,8 @@
                 <th>Hours</th>
                 <th>Guests</th>
                 <th>Notes</th>
+                <th><i class="ri-user-line"></i> User</th>
+                <th class="admin-assigned-col hidden"><i class="ri-user-follow-line"></i> Assigned To</th>
               </tr>
             </thead>
             <tbody id="todayTableBody"></tbody>
@@ -214,6 +263,8 @@
                 <th>Hours</th>
                 <th>Guests</th>
                 <th>Notes</th>
+                <th><i class="ri-user-line"></i> User</th>
+                <th class="admin-assigned-col hidden"><i class="ri-user-follow-line"></i> Assigned To</th>
               </tr>
             </thead>
             <tbody id="tomorrowTableBody"></tbody>
@@ -241,6 +292,7 @@
                 <th>Items</th>
                 <th>Note</th>
                 <th>Date</th>
+                <th><i class="ri-user-line"></i> User</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -249,7 +301,77 @@
         </div>
       </div>
 
+      <!-- Admin Only: Kotkansiipi Approvals -->
+      <div class="card mt-xl hidden" id="adminApprovalsCard">
+        <div class="card-header">
+          <h2 class="card-title"><i class="ri-shield-check-line"></i> Approvals</h2>
+          <span id="adminApprovalsCount" class="hours-pill"
+            style="background:rgba(245,158,11,0.15);color:var(--clr-warning);"></span>
+        </div>
+        <div class="empty-state hidden" id="adminApprovalsEmpty">
+          <i class="ri-checkbox-circle-line"></i>
+          <h3>No pending approvals</h3>
+          <p>All worker entries have been reviewed.</p>
+        </div>
+        <div id="adminApprovalsList" class="hidden">
+          <table class="data-table" id="adminApprovalsTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Worker</th>
+                <th>Check In / Out</th>
+                <th>Hours</th>
+                <th>Notes</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminApprovalsTbody"></tbody>
+          </table>
+        </div>
+      </div>
 
+
+    </section>
+
+    <!-- ── Kotkansiipi Approvals Section (Admin Only) ── -->
+    <section class="section" id="section-approvals">
+      <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <h1 class="section-title" style="display:flex;align-items:center;gap:10px;">
+            Approvals
+            <span id="sectionApprovalBadge" class="hours-pill hidden"
+              style="background:var(--clr-danger);color:#fff;padding:3px 10px;font-size:13px;font-weight:700;border-radius:999px;display:inline-flex;align-items:center;gap:4px;"></span>
+          </h1>
+          <p class="section-sub">Review, approve, or decline worker times</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="ri-shield-check-line"></i>Worker Entries</h2>
+        </div>
+        <div class="empty-state hidden" id="adminPaneApprovalsEmpty">
+          <i class="ri-checkbox-circle-line"></i>
+          <h3>No worker entries found</h3>
+        </div>
+        <div class="table-wrapper" id="adminPaneApprovalsWrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Worker</th>
+                <th>Check In / Out</th>
+                <th>Hours</th>
+                <th>Notes</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminPaneApprovalsTbody"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- ── Add / Edit Entry Section ── -->
@@ -269,6 +391,13 @@
         <form id="workEntryForm" onsubmit="handleFormSubmit(event)" novalidate>
           <div class="form-grid">
 
+            <!-- Admin Only: Choose Worker to Add For -->
+            <div class="form-group form-group-full hidden" id="dTargetWorkerGroup">
+              <label class="form-label">
+                <i class="ri-user-line"></i> Add For Worker <span class="required">*</span>
+              </label>
+              <div class="checkbox-group" id="dTargetWorkerRadios" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;"></div>
+            </div>
 
             <div class="form-group form-group-full">
               <label class="form-label">
@@ -278,10 +407,6 @@
                 <label class="checkbox-label">
                   <input type="checkbox" name="dLoc" value="Kotkansiipi"
                     onchange="window.updateDynamicDetailedBlocks()"> Kotkansiipi
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" name="dLoc" value="Rautkallionkatu"
-                    onchange="window.updateDynamicDetailedBlocks()"> Rautkallionkatu
                 </label>
                 <label class="checkbox-label">
                   <input type="checkbox" name="dLoc" value="Kakoisvayla"
@@ -339,6 +464,14 @@
       <div class="card form-card hidden" id="quickFormWrapper">
         <form id="quickEntryForm" onsubmit="handleQuickSubmit(event)" novalidate>
           <div class="form-grid">
+            <!-- Admin Only: Choose Worker to Add For -->
+            <div class="form-group form-group-full hidden" id="qTargetWorkerGroup">
+              <label class="form-label">
+                <i class="ri-user-line"></i> Add For Worker <span class="required">*</span>
+              </label>
+              <div class="checkbox-group" id="qTargetWorkerRadios" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;"></div>
+            </div>
+
             <div class="form-group form-group-full">
               <label class="form-label">
                 <i class="ri-map-pin-2-line"></i> Locations <span class="required">*</span>
@@ -347,10 +480,6 @@
                 <label class="checkbox-label">
                   <input type="checkbox" name="qLoc" value="Kotkansiipi" onchange="window.updateDynamicHours()">
                   Kotkansiipi
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" name="qLoc" value="Rautkallionkatu" onchange="window.updateDynamicHours()">
-                  Rautkallionkatu
                 </label>
                 <label class="checkbox-label">
                   <input type="checkbox" name="qLoc" value="Kakoisvayla" onchange="window.updateDynamicHours()">
@@ -452,8 +581,6 @@
               <div class="checkbox-group" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
                 <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Kotkansiipi">
                   Kotkansiipi</label>
-                <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Rautkallionkatu">
-                  Rautkallionkatu</label>
                 <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Kakoisvayla">
                   Kakoisvayla</label>
                 <label class="checkbox-label"><input type="checkbox" name="noteLoc" value="Mayavatie"> Mayavatie</label>
@@ -515,6 +642,7 @@
                 <th>Items</th>
                 <th>Note</th>
                 <th>Date Added</th>
+                <th><i class="ri-user-line"></i> User</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -545,6 +673,7 @@
                 <th>Items</th>
                 <th>Location</th>
                 <th>Note</th>
+                <th><i class="ri-user-line"></i> User</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -584,10 +713,6 @@
                 <input type="checkbox" name="filterLoc" value="Kotkansiipi" onchange="applyFilters()"> Kotkansiipi
               </label>
               <label class="checkbox-label">
-                <input type="checkbox" name="filterLoc" value="Rautkallionkatu" onchange="applyFilters()">
-                Rautkallionkatu
-              </label>
-              <label class="checkbox-label">
                 <input type="checkbox" name="filterLoc" value="Kakoisvayla" onchange="applyFilters()"> Kakoisvayla
               </label>
               <label class="checkbox-label">
@@ -600,6 +725,12 @@
               <label class="checkbox-label">
                 <input type="checkbox" name="filterLoc" value="Riskiläkuja" onchange="applyFilters()"> Riskiläkuja
               </label>
+            </div>
+          </div>
+          <div class="form-group form-group-full hidden" id="filterWorkerGroup">
+            <label class="form-label"><i class="ri-user-line"></i> Worker</label>
+            <div class="checkbox-group" id="filterWorkerCheckboxes"
+              style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
             </div>
           </div>
           <div class="form-group">
@@ -707,18 +838,188 @@
         <p class="section-sub">Log of all added, edited, and deleted records</p>
       </div>
 
+      <!-- Activities Location Filter -->
+      <div class="card filters-card form-card">
+        <div class="filters-header">
+          <h2 class="card-title"><i class="ri-filter-3-line"></i> Filter by Location</h2>
+          <button class="btn btn-ghost btn-sm" onclick="clearActivityFilters()"><i class="ri-refresh-line"></i>
+            Reset</button>
+        </div>
+        <div class="checkbox-group" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+          <label class="checkbox-label">
+            <input type="checkbox" name="actFilterLoc" value="Kotkansiipi" onchange="applyActivityFilters()">
+            Kotkansiipi
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="actFilterLoc" value="Kakoisvayla" onchange="applyActivityFilters()">
+            Kakoisvayla
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="actFilterLoc" value="Mayavatie" onchange="applyActivityFilters()"> Mayavatie
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="actFilterLoc" value="House Cleaning (Puistola)"
+              onchange="applyActivityFilters()"> House Cleaning (Puistola)
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="actFilterLoc" value="Riskiläkuja" onchange="applyActivityFilters()">
+            Riskiläkuja
+          </label>
+        </div>
+      </div>
+
       <div class="card mt-md">
         <div class="table-wrapper" id="activitiesTableWrapper">
           <table class="data-table" id="activitiesTable">
             <thead>
               <tr>
                 <th>Time</th>
+                <th>User</th>
                 <th>Action</th>
                 <th>Message</th>
               </tr>
             </thead>
             <tbody id="activitiesTableBody"></tbody>
           </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Admin Tools Section (Admin Only) ── -->
+    <section class="section" id="section-admin">
+      <div class="section-header">
+        <h1 class="section-title">Admin Tools</h1>
+        <p class="section-sub">Manage worker login credentials and worker profiles</p>
+      </div>
+
+      <!-- Admin Sub-Tabs -->
+      <div class="form-tabs" style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="adminTabAccounts" onclick="switchAdminSubTab('accounts')">
+          <i class="ri-shield-user-line"></i> Worker Accounts
+        </button>
+        <button class="btn btn-ghost" id="adminTabProfiles" onclick="switchAdminSubTab('profiles')">
+          <i class="ri-id-card-line"></i> Worker Profiles
+        </button>
+      </div>
+
+      <!-- Sub-Pane 1: Worker Accounts -->
+      <div id="adminPaneAccounts">
+        <div class="card form-card">
+          <h2 class="card-title" style="margin-bottom:20px;"><i class="ri-user-add-line"></i> Create Worker Account</h2>
+          <form id="createWorkerForm" onsubmit="handleCreateWorker(event)" novalidate>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label" for="newWorkerUsername"><i class="ri-user-line"></i> Username <span
+                    class="required">*</span></label>
+                <input type="text" id="newWorkerUsername" class="form-control" placeholder="e.g. worker1"
+                  autocomplete="off" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="newWorkerPassword"><i class="ri-lock-line"></i> Password <span
+                    class="required">*</span></label>
+                <div class="login-pw-row">
+                  <input type="password" id="newWorkerPassword" class="form-control" placeholder="Min 4 characters"
+                    autocomplete="new-password" required />
+                  <button type="button" class="login-eye-btn" onclick="toggleAdminNewWorkerPw()">
+                    <i class="ri-eye-line" id="newWorkerPwEye"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <span class="field-error" id="createWorkerError"></span>
+            <div class="form-actions" style="margin-top:16px;">
+              <button type="submit" class="btn btn-primary" id="createWorkerBtn">
+                <i class="ri-user-add-line"></i> Create Worker
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card mt-xl">
+          <div class="card-header">
+            <h2 class="card-title"><i class="ri-team-line"></i> Worker Accounts</h2>
+          </div>
+          <div class="empty-state hidden" id="workersListEmpty">
+            <i class="ri-user-search-line"></i>
+            <h3>No worker accounts yet</h3>
+            <p>Create a worker username and password above.</p>
+          </div>
+          <div class="table-wrapper" id="workersListTableWrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="workersListTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-Pane 2: Worker Profiles -->
+      <div id="adminPaneProfiles" class="hidden">
+        <div class="card form-card">
+          <h2 class="card-title" id="profileFormHeading" style="margin-bottom:20px;"><i class="ri-id-card-line"></i>
+            Create Worker Profile</h2>
+          <form id="createProfileForm" onsubmit="handleCreateProfile(event)" novalidate>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label" for="profileFullName"><i class="ri-user-line"></i> Full Name <span
+                    class="required">*</span></label>
+                <input type="text" id="profileFullName" class="form-control" placeholder="e.g. John Smith" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="profileUsername"><i class="ri-shield-user-line"></i> Linked Account
+                  (Username)</label>
+                <select id="profileUsername" class="form-control">
+                  <option value="">— Select account —</option>
+                </select>
+              </div>
+              <div class="form-group form-group-full">
+                <label class="form-label" for="profileNotes"><i class="ri-sticky-note-line"></i> Notes / Info</label>
+                <textarea id="profileNotes" class="form-control" rows="2"
+                  placeholder="Optional notes about this worker…"></textarea>
+              </div>
+            </div>
+            <span class="field-error" id="createProfileError"></span>
+            <div class="form-actions" style="margin-top:16px;">
+              <input type="hidden" id="editProfileDocId" value="" />
+              <button type="button" class="btn btn-ghost" id="cancelProfileEditBtn" onclick="cancelProfileEdit()"
+                style="display:none;">
+                <i class="ri-close-line"></i> Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" id="createProfileBtn">
+                <i class="ri-save-line"></i> <span id="createProfileBtnText">Save Profile</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card mt-xl">
+          <div class="card-header">
+            <h2 class="card-title"><i class="ri-contacts-book-line"></i> Worker Profiles</h2>
+          </div>
+          <div class="empty-state hidden" id="profilesListEmpty">
+            <i class="ri-contacts-book-2-line"></i>
+            <h3>No worker profiles yet</h3>
+            <p>Create a worker profile above.</p>
+          </div>
+          <div class="table-wrapper" id="profilesListTableWrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Full Name</th>
+                  <th>Linked Username</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="profilesListTbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -780,8 +1081,6 @@
             selected)</span></label>
         <div class="dfm-loc-chips" id="dfmLocChips">
           <button class="dfm-chip dfm-loc-chip" data-loc="Kotkansiipi" onclick="toggleDfmLoc(this)">Kotkansiipi</button>
-          <button class="dfm-chip dfm-loc-chip" data-loc="Rautkallionkatu"
-            onclick="toggleDfmLoc(this)">Rautkallionkatu</button>
           <button class="dfm-chip dfm-loc-chip" data-loc="Kakoisvayla" onclick="toggleDfmLoc(this)">Kakoisvayla</button>
           <button class="dfm-chip dfm-loc-chip" data-loc="Mayavatie" onclick="toggleDfmLoc(this)">Mayavatie</button>
           <button class="dfm-chip dfm-loc-chip" data-loc="Riskiläkuja" onclick="toggleDfmLoc(this)">Riskiläkuja</button>
@@ -808,6 +1107,56 @@
         <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
         <button class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDelete()">Delete</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ───── Change Password Modal (Worker View) ───── -->
+  <div class="modal-overlay hidden" id="changePwOverlay" onclick="if(event.target===this)closeChangePwModal()">
+    <div class="modal-dialog" style="max-width:400px;text-align:left;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <h3 class="modal-title" style="margin:0;display:flex;align-items:center;gap:8px;">
+          <i class="ri-key-2-line" style="color:var(--clr-primary);"></i> Change Password
+        </h3>
+        <button type="button" class="dfm-close" onclick="closeChangePwModal()" aria-label="Close">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
+      <form id="changePwForm" onsubmit="handleChangePassword(event)" novalidate>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label" for="cpCurrentPw"><i class="ri-lock-line"></i> Current Password</label>
+          <div class="login-pw-row">
+            <input type="password" id="cpCurrentPw" class="form-control" placeholder="Enter current password" required />
+            <button type="button" class="login-eye-btn" onclick="toggleCpEye('cpCurrentPw', 'cpEye1')">
+              <i class="ri-eye-line" id="cpEye1"></i>
+            </button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label" for="cpNewPw"><i class="ri-lock-password-line"></i> New Password</label>
+          <div class="login-pw-row">
+            <input type="password" id="cpNewPw" class="form-control" placeholder="Min 4 characters" required />
+            <button type="button" class="login-eye-btn" onclick="toggleCpEye('cpNewPw', 'cpEye2')">
+              <i class="ri-eye-line" id="cpEye2"></i>
+            </button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label" for="cpConfirmPw"><i class="ri-checkbox-circle-line"></i> Confirm New Password</label>
+          <div class="login-pw-row">
+            <input type="password" id="cpConfirmPw" class="form-control" placeholder="Re-enter new password" required />
+            <button type="button" class="login-eye-btn" onclick="toggleCpEye('cpConfirmPw', 'cpEye3')">
+              <i class="ri-eye-line" id="cpEye3"></i>
+            </button>
+          </div>
+        </div>
+        <span class="field-error" id="cpError" style="display:block;margin-bottom:10px;"></span>
+        <div class="modal-actions" style="justify-content:flex-end;">
+          <button type="button" class="btn btn-ghost" onclick="closeChangePwModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="cpSubmitBtn">
+            <i class="ri-save-line"></i> Update Password
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

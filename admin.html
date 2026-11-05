@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WorkTrack — Admin Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      display: block;
+    }
+
+    .admin-wrap {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 40px 20px 60px;
+      background: var(--clr-bg);
+    }
+
+    .admin-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+      width: 100%;
+      max-width: 820px;
+    }
+
+    .admin-logo-icon {
+      font-size: 28px;
+      color: var(--clr-primary);
+      background: rgba(99, 102, 241, 0.12);
+      padding: 10px;
+      border-radius: 12px;
+    }
+
+    .admin-logo-text {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--clr-text);
+    }
+
+    .admin-logo-badge {
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--clr-primary);
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 99px;
+      letter-spacing: 0.5px;
+    }
+
+    .admin-back-btn {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      background: var(--clr-surface);
+      border: 1.5px solid var(--clr-border);
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--clr-text-muted);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .admin-back-btn:hover {
+      border-color: var(--clr-primary);
+      color: var(--clr-primary);
+      background: rgba(99, 102, 241, 0.06);
+    }
+
+    /* ── Gate ── */
+    .admin-gate {
+      width: 100%;
+      max-width: 420px;
+      background: var(--clr-surface);
+      border: 1.5px solid var(--clr-border);
+      border-radius: 20px;
+      box-shadow: var(--shadow-md);
+      padding: 40px 36px;
+      text-align: center;
+    }
+
+    .admin-gate-icon {
+      font-size: 48px;
+      color: var(--clr-primary);
+      margin-bottom: 16px;
+    }
+
+    .admin-gate h2 {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .admin-gate p {
+      color: var(--clr-text-muted);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    /* ── Panel & Tabs ── */
+    .admin-panel {
+      width: 100%;
+      max-width: 820px;
+    }
+
+    .admin-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--clr-surface);
+      border: 1.5px solid var(--clr-border);
+      border-radius: 14px;
+      padding: 6px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .admin-tab-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 16px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--clr-text-muted);
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all 0.2s;
+      background: none;
+    }
+
+    .admin-tab-btn i {
+      font-size: 16px;
+    }
+
+    .admin-tab-btn:hover {
+      color: var(--clr-text);
+      background: var(--clr-surface-2);
+    }
+
+    .admin-tab-btn.active {
+      background: var(--clr-primary);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .admin-tab-pane {
+      display: none;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .admin-tab-pane.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .admin-section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .admin-section-title i {
+      color: var(--clr-primary);
+    }
+
+    /* ── Forms ── */
+    .admin-create-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 14px;
+      align-items: end;
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .admin-create-form {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .admin-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .admin-input-label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--clr-text-muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .admin-input-label i {
+      color: var(--clr-primary);
+    }
+
+    .admin-input {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--clr-surface-2);
+      border: 1.5px solid var(--clr-border);
+      border-radius: 10px;
+      font-size: 14px;
+      color: var(--clr-text);
+      font-family: var(--font);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    .admin-input:focus {
+      border-color: var(--clr-primary);
+      box-shadow: 0 0 0 3px var(--clr-primary-glow);
+    }
+
+    .admin-create-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 22px;
+      background: var(--clr-primary);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: var(--font);
+      transition: background 0.2s, transform 0.15s;
+    }
+
+    .admin-create-btn:hover {
+      background: var(--clr-primary-h);
+      transform: translateY(-1px);
+    }
+
+    .admin-create-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .admin-error {
+      color: var(--clr-danger);
+      font-size: 12.5px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .admin-error.visible {
+      display: block;
+    }
+
+    /* ── Profile form (wider grid) ── */
+    .profile-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px 20px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 580px) {
+      .profile-form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .profile-form-grid .full {
+      grid-column: 1 / -1;
+    }
+
+    .profile-save-row {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    /* ── Workers table ── */
+    .workers-table-wrap {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .workers-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .workers-table th {
+      background: var(--clr-surface-2);
+      padding: 13px 18px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--clr-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--clr-border);
+    }
+
+    .workers-table td {
+      padding: 14px 18px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--clr-border);
+      vertical-align: middle;
+    }
+
+    .workers-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .workers-table tr:hover td {
+      background: var(--clr-surface-2);
+    }
+
+    .worker-username {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+    }
+
+    .worker-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.12);
+      color: var(--clr-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .worker-delete-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(239, 68, 68, 0.08);
+      color: var(--clr-danger);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all 0.18s;
+    }
+
+    .worker-delete-btn:hover {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: var(--clr-danger);
+    }
+
+    /* Profile card rows */
+    .profile-card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: 14px;
+      padding: 20px 22px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .profile-card+.profile-card {
+      margin-top: 12px;
+    }
+
+    .profile-avatar-lg {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: rgba(99, 102, 241, 0.12);
+      color: var(--clr-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .profile-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .profile-name {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .profile-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .profile-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12.5px;
+      color: var(--clr-text-muted);
+      font-weight: 500;
+    }
+
+    .profile-meta-item i {
+      color: var(--clr-primary);
+      font-size: 13px;
+    }
+
+    .profile-role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 12px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--clr-primary);
+    }
+
+    .profile-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .admin-empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--clr-text-muted);
+    }
+
+    .admin-empty i {
+      font-size: 40px;
+      margin-bottom: 10px;
+      display: block;
+      color: var(--clr-border);
+    }
+
+    /* ── Shared inputs ── */
+    .pw-input-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .pw-input-row .admin-input {
+      padding-right: 42px;
+    }
+
+    .pw-eye-btn {
+      position: absolute;
+      right: 10px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--clr-text-muted);
+      font-size: 17px;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+    }
+
+    .pw-eye-btn:hover {
+      color: var(--clr-primary);
+    }
+
+    /* ── Toast ── */
+    .admin-toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      padding: 14px 22px;
+      background: var(--clr-text);
+      color: var(--clr-surface);
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: var(--shadow-md);
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .admin-toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .admin-toast.success {
+      background: var(--clr-success);
+      color: #fff;
+    }
+
+    .admin-toast.error {
+      background: var(--clr-danger);
+      color: #fff;
+    }
+
+    .mt-lg {
+      margin-top: 28px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="admin-wrap">
+
+    <!-- Header -->
+    <div class="admin-header">
+      <i class="ri-time-line admin-logo-icon"></i>
+      <span class="admin-logo-text">WorkTrack</span>
+      <span class="admin-logo-badge">ADMIN</span>
+      <a href="index.html" class="admin-back-btn"><i class="ri-arrow-left-line"></i> Back to App</a>
+    </div>
+
+    <!-- ── Admin Gate ── -->
+    <div class="admin-gate" id="adminGate">
+      <div class="admin-gate-icon"><i class="ri-shield-keyhole-line"></i></div>
+      <h2>Admin Access</h2>
+      <p>Enter the admin password to manage workers.</p>
+      <form onsubmit="checkAdminPassword(event)" novalidate>
+        <div class="pw-input-row" style="margin-bottom:14px;">
+          <input type="password" id="adminGatePw" class="admin-input" placeholder="Admin password" autocomplete="off"
+            required />
+          <button type="button" class="pw-eye-btn" onclick="toggleGatePw()"><i class="ri-eye-line"
+              id="gateEyeIcon"></i></button>
+        </div>
+        <div class="admin-error" id="gateError">Wrong password. Try again.</div>
+        <button type="submit" class="admin-create-btn" style="width:100%;justify-content:center;margin-top:4px;">
+          <i class="ri-unlock-line"></i> Unlock
+        </button>
+      </form>
+    </div>
+
+    <!-- ── Admin Panel ── -->
+    <div class="admin-panel hidden" id="adminPanel">
+
+      <!-- Tab buttons -->
+      <div class="admin-tabs">
+        <button class="admin-tab-btn active" id="tab-accounts" onclick="switchAdminTab('accounts')">
+          <i class="ri-shield-user-line"></i> Worker Accounts
+        </button>
+        <button class="admin-tab-btn" id="tab-profiles" onclick="switchAdminTab('profiles')">
+          <i class="ri-id-card-line"></i> Worker Profiles
+        </button>
+        <button class="admin-tab-btn" id="tab-approvals" onclick="switchAdminTab('approvals')">
+          <i class="ri-shield-check-line"></i> Kotkansiipi Approvals <span id="tabApprovalCount"
+            style="display:none;background:var(--clr-warning);color:#fff;padding:1px 7px;border-radius:99px;font-size:11px;margin-left:4px;"></span>
+        </button>
+      </div>
+
+      <!-- ══ TAB 1: Worker Accounts ══ -->
+      <div class="admin-tab-pane active" id="pane-accounts">
+        <h2 class="admin-section-title"><i class="ri-user-add-line"></i> Create Worker Account</h2>
+
+        <form id="createWorkerForm" onsubmit="createWorker(event)" novalidate>
+          <div class="admin-create-form">
+            <div class="admin-input-group">
+              <label class="admin-input-label"><i class="ri-user-line"></i> Username</label>
+              <input type="text" id="newUsername" class="admin-input" placeholder="e.g. john" autocomplete="off"
+                required />
+            </div>
+            <div class="admin-input-group">
+              <label class="admin-input-label"><i class="ri-lock-line"></i> Password</label>
+              <div class="pw-input-row">
+                <input type="password" id="newPassword" class="admin-input" placeholder="Min 4 characters"
+                  autocomplete="new-password" required />
+                <button type="button" class="pw-eye-btn" onclick="toggleNewPw()"><i class="ri-eye-line"
+                    id="newPwEyeIcon"></i></button>
+              </div>
+            </div>
+            <button type="submit" class="admin-create-btn" id="createWorkerBtn">
+              <i class="ri-user-add-line"></i> Create
+            </button>
+          </div>
+          <div class="admin-error" id="createError"></div>
+        </form>
+
+        <h2 class="admin-section-title mt-lg"><i class="ri-team-line"></i> All Accounts</h2>
+        <div class="workers-table-wrap">
+          <div class="admin-empty" id="workersEmpty">
+            <i class="ri-user-search-line"></i>
+            <p>No worker accounts yet. Create one above.</p>
+          </div>
+          <table class="workers-table" id="workersTable" style="display:none">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Created</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="workersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ TAB 2: Worker Profiles ══ -->
+      <div class="admin-tab-pane" id="pane-profiles">
+        <h2 class="admin-section-title"><i class="ri-id-card-line"></i> Create Worker Profile</h2>
+
+        <div class="card form-card" style="margin-bottom:28px;">
+          <form id="createProfileForm" onsubmit="createProfile(event)" novalidate>
+            <div class="profile-form-grid">
+
+              <div class="admin-input-group">
+                <label class="admin-input-label"><i class="ri-user-line"></i> Full Name <span
+                    style="color:var(--clr-danger)">*</span></label>
+                <input type="text" id="profileFullName" class="admin-input" placeholder="e.g. John Smith" required />
+              </div>
+
+              <div class="admin-input-group">
+                <label class="admin-input-label"><i class="ri-shield-user-line"></i> Linked Account (Username)</label>
+                <select id="profileUsername" class="admin-input">
+                  <option value="">— Select account —</option>
+                </select>
+              </div>
+
+              <div class="admin-input-group full">
+                <label class="admin-input-label"><i class="ri-sticky-note-line"></i> Notes / Info</label>
+                <textarea id="profileNotes" class="admin-input" rows="3"
+                  placeholder="Any additional info about this worker…" style="resize:vertical;"></textarea>
+              </div>
+
+            </div>
+            <div class="admin-error" id="profileError"></div>
+            <div class="profile-save-row">
+              <button type="submit" class="admin-create-btn" id="createProfileBtn">
+                <i class="ri-save-line"></i> Save Profile
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <h2 class="admin-section-title"><i class="ri-contacts-book-line"></i> All Profiles</h2>
+        <div id="profilesListEmpty" class="admin-empty" style="display:none;">
+          <i class="ri-contacts-book-2-line"></i>
+          <p>No profiles yet. Create one above.</p>
+        </div>
+        <div id="profilesList"></div>
+      </div>
+
+      <!-- ══ TAB 3: Kotkansiipi Approvals ══ -->
+      <div class="admin-tab-pane" id="pane-approvals">
+        <h2 class="admin-section-title"><i class="ri-shield-check-line"></i> Kotkansiipi Times Approval</h2>
+        <div class="workers-table-wrap">
+          <div class="admin-empty" id="approvalsEmpty">
+            <i class="ri-checkbox-circle-line"></i>
+            <p>No Kotkansiipi worker entries found.</p>
+          </div>
+          <table class="workers-table" id="approvalsTable" style="display:none">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Worker</th>
+                <th>Check In / Out</th>
+                <th>Hours</th>
+                <th>Note</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="approvalsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /admin-panel -->
+  </div><!-- /admin-wrap -->
+
+  <div class="admin-toast" id="adminToast"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+    import {
+      getFirestore,
+      collection, addDoc, deleteDoc, updateDoc,
+      doc, onSnapshot, query, orderBy,
+      serverTimestamp, getDocs, where
+    } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAnBX2gLAo9aZRC8suyRNICRjoOUK4gp-4",
+      authDomain: "real-time-prasiddha.firebaseapp.com",
+      databaseURL: "https://real-time-prasiddha-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "real-time-prasiddha",
+      storageBucket: "real-time-prasiddha.firebasestorage.app",
+      messagingSenderId: "713785938695",
+      appId: "1:713785938695:web:a9aa397c252a9eb9e9eba2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ── Helpers ──────────────────────────────────────────────
+    async function sha256(message) {
+      const buf = new TextEncoder().encode(message);
+      const hash = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function capitalizeWord(str) {
+      if (!str) return '';
+      const s = String(str).trim();
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function showAdminToast(msg, type = 'success') {
+      const t = document.getElementById('adminToast');
+      t.textContent = msg;
+      t.className = `admin-toast ${type} show`;
+      setTimeout(() => { t.className = 'admin-toast'; }, 3200);
+    }
+
+    function showErr(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = msg; el.classList.add('visible');
+    }
+    function clearErr(id) {
+      const el = document.getElementById(id);
+      el.textContent = ''; el.classList.remove('visible');
+    }
+
+    // ── Admin gate ───────────────────────────────────────────
+    const ADMIN_PW = 'Prastika@1216';
+
+    function checkGate() {
+      if (localStorage.getItem('wt-admin-unlocked') === '1') showPanel();
+    }
+
+    window.checkAdminPassword = function (e) {
+      e.preventDefault();
+      const pw = document.getElementById('adminGatePw').value;
+      if (pw === ADMIN_PW) {
+        localStorage.setItem('wt-admin-unlocked', '1');
+        localStorage.setItem('wt-logged-in-user', 'admin');
+        localStorage.setItem('wt-user-role', 'admin');
+        clearErr('gateError');
+        showPanel();
+      } else {
+        showErr('gateError', 'Wrong password. Try again.');
+        document.getElementById('adminGatePw').value = '';
+        document.getElementById('adminGatePw').focus();
+      }
+    };
+
+    function showPanel() {
+      document.getElementById('adminGate').classList.add('hidden');
+      document.getElementById('adminPanel').classList.remove('hidden');
+      subscribeWorkers();
+      subscribeProfiles();
+      subscribeApprovals();
+    }
+
+    // ── Eye toggles ──────────────────────────────────────────
+    window.toggleGatePw = function () {
+      const inp = document.getElementById('adminGatePw');
+      const ico = document.getElementById('gateEyeIcon');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+      ico.className = inp.type === 'text' ? 'ri-eye-off-line' : 'ri-eye-line';
+    };
+
+    window.toggleNewPw = function () {
+      const inp = document.getElementById('newPassword');
+      const ico = document.getElementById('newPwEyeIcon');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+      ico.className = inp.type === 'text' ? 'ri-eye-off-line' : 'ri-eye-line';
+    };
+
+    // ── Tab switching ─────────────────────────────────────────
+    window.switchAdminTab = function (tab) {
+      document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.admin-tab-pane').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      document.getElementById('pane-' + tab).classList.add('active');
+    };
+
+    // ══════════════════════════════════════════════════════════
+    //  TAB 1 — Worker Accounts
+    // ══════════════════════════════════════════════════════════
+
+    window.createWorker = async function (e) {
+      e.preventDefault();
+      clearErr('createError');
+      const username = document.getElementById('newUsername').value.trim().toLowerCase();
+      const password = document.getElementById('newPassword').value;
+      const btn = document.getElementById('createWorkerBtn');
+
+      if (!username || username.length < 2) { showErr('createError', 'Username must be at least 2 characters.'); return; }
+      if (!password || password.length < 4) { showErr('createError', 'Password must be at least 4 characters.'); return; }
+
+      // Duplicate check
+      const snap = await getDocs(query(collection(db, 'workers'), where('username', '==', username)));
+      if (!snap.empty) { showErr('createError', 'Username already exists.'); return; }
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner" style="width:15px;height:15px;border-width:2px;border-color:rgba(255,255,255,0.3);border-top-color:#fff;"></div>&nbsp;Creating…';
+      try {
+        const hash = await sha256(password);
+        await addDoc(collection(db, 'workers'), { username, passwordHash: hash, createdAt: serverTimestamp() });
+        document.getElementById('createWorkerForm').reset();
+        showAdminToast('Worker account created!', 'success');
+      } catch (err) {
+        console.error(err); showAdminToast('Error creating account.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ri-user-add-line"></i> Create';
+      }
+    };
+
+    window.deleteWorker = async function (id, name) {
+      if (!confirm(`Delete account "${name}"? This cannot be undone.`)) return;
+      try {
+        await deleteDoc(doc(db, 'workers', id));
+        showAdminToast(`Account "${name}" deleted.`, 'success');
+      } catch (err) { console.error(err); showAdminToast('Error deleting account.', 'error'); }
+    };
+
+    let allWorkers = [];
+
+    function subscribeWorkers() {
+      const q = query(collection(db, 'workers'), orderBy('createdAt', 'desc'));
+      onSnapshot(q, snap => {
+        allWorkers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderWorkers(allWorkers);
+        populateUsernameSelect(allWorkers);
+      });
+    }
+
+    function renderWorkers(workers) {
+      const empty = document.getElementById('workersEmpty');
+      const table = document.getElementById('workersTable');
+      const tbody = document.getElementById('workersTbody');
+      if (!workers.length) { empty.style.display = ''; table.style.display = 'none'; return; }
+      empty.style.display = 'none';
+      table.style.display = '';
+      tbody.innerHTML = workers.map(w => {
+        const initials = w.username ? w.username[0].toUpperCase() : '?';
+        const created = w.createdAt?.toDate ? w.createdAt.toDate().toLocaleDateString() : '—';
+        return `
+        <tr>
+          <td>
+            <div class="worker-username">
+              <div class="worker-avatar">${initials}</div>
+              ${escHtml(capitalizeWord(w.username))}
+            </div>
+          </td>
+          <td style="color:var(--clr-text-muted);font-size:13px;">${created}</td>
+          <td>
+            <button class="worker-delete-btn" onclick="deleteWorker('${w.id}','${escHtml(w.username)}')">
+              <i class="ri-delete-bin-6-line"></i> Delete
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function populateUsernameSelect(workers) {
+      const sel = document.getElementById('profileUsername');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— Select account —</option>';
+      workers.forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w.username;
+        opt.textContent = capitalizeWord(w.username);
+        if (w.username === cur) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  TAB 2 — Worker Profiles
+    // ══════════════════════════════════════════════════════════
+
+    let editingProfileId = null;
+
+    window.createProfile = async function (e) {
+      e.preventDefault();
+      clearErr('profileError');
+      const fullName = document.getElementById('profileFullName').value.trim();
+      const username = document.getElementById('profileUsername').value.trim();
+      const notes = document.getElementById('profileNotes').value.trim();
+      const btn = document.getElementById('createProfileBtn');
+
+      if (!fullName) { showErr('profileError', 'Full name is required.'); return; }
+
+      btn.disabled = true;
+      const isEdit = !!editingProfileId;
+      btn.innerHTML = `<div class="spinner" style="width:15px;height:15px;border-width:2px;border-color:rgba(255,255,255,0.3);border-top-color:#fff;"></div>&nbsp;${isEdit ? 'Updating…' : 'Saving…'}`;
+
+      const data = { fullName, username, notes, updatedAt: serverTimestamp() };
+
+      try {
+        if (isEdit) {
+          await updateDoc(doc(db, 'workerProfiles', editingProfileId), data);
+          showAdminToast('Profile updated!', 'success');
+          editingProfileId = null;
+        } else {
+          data.createdAt = serverTimestamp();
+          await addDoc(collection(db, 'workerProfiles'), data);
+          showAdminToast('Profile saved!', 'success');
+        }
+        document.getElementById('createProfileForm').reset();
+        btn.innerHTML = '<i class="ri-save-line"></i> Save Profile';
+        document.querySelector('#pane-profiles .admin-section-title').innerHTML = '<i class="ri-id-card-line"></i> Create Worker Profile';
+      } catch (err) {
+        console.error(err); showAdminToast('Error saving profile.', 'error');
+      } finally {
+        btn.disabled = false;
+        if (!editingProfileId) btn.innerHTML = '<i class="ri-save-line"></i> Save Profile';
+      }
+    };
+
+    window.editProfile = function (id) {
+      const p = allProfiles.find(x => x.id === id);
+      if (!p) return;
+      editingProfileId = id;
+      document.getElementById('profileFullName').value = p.fullName || '';
+      document.getElementById('profileUsername').value = p.username || '';
+      document.getElementById('profileNotes').value = p.notes || '';
+      document.getElementById('createProfileBtn').innerHTML = '<i class="ri-save-line"></i> Update Profile';
+      document.querySelector('#pane-profiles .admin-section-title').innerHTML = '<i class="ri-edit-line"></i> Edit Worker Profile';
+      document.getElementById('pane-profiles').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    window.deleteProfile = async function (id, name) {
+      if (!confirm(`Delete profile for "${name}"? This cannot be undone.`)) return;
+      try {
+        await deleteDoc(doc(db, 'workerProfiles', id));
+        showAdminToast(`Profile for "${name}" deleted.`, 'success');
+      } catch (err) { console.error(err); showAdminToast('Error deleting profile.', 'error'); }
+    };
+
+    let allProfiles = [];
+
+    function subscribeProfiles() {
+      const q = query(collection(db, 'workerProfiles'), orderBy('createdAt', 'desc'));
+      onSnapshot(q, snap => {
+        allProfiles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderProfiles(allProfiles);
+      });
+    }
+
+    function renderProfiles(profiles) {
+      const listEl = document.getElementById('profilesList');
+      const emptyEl = document.getElementById('profilesListEmpty');
+      if (!profiles.length) {
+        listEl.innerHTML = '';
+        emptyEl.style.display = '';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      listEl.innerHTML = profiles.map(p => {
+        const initials = p.fullName ? p.fullName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() : '?';
+        const created = p.createdAt?.toDate ? p.createdAt.toDate().toLocaleDateString() : '—';
+        const accLabel = p.username ? `<div class="profile-meta-item"><i class="ri-user-line"></i> @${escHtml(capitalizeWord(p.username))}</div>` : '';
+        const noteLabel = p.notes ? `<div style="margin-top:8px;font-size:13px;color:var(--clr-text-muted);font-style:italic;">${escHtml(p.notes)}</div>` : '';
+        return `
+        <div class="profile-card">
+          <div class="profile-avatar-lg">${initials}</div>
+          <div class="profile-info">
+            <div class="profile-name">${escHtml(p.fullName)}</div>
+            <div class="profile-meta">
+              ${accLabel}
+              <div class="profile-meta-item"><i class="ri-time-line"></i> Added: ${created}</div>
+            </div>
+            ${noteLabel}
+          </div>
+          <div class="profile-actions">
+            <button class="admin-create-btn" style="padding:8px 14px;font-size:13px;background:var(--clr-surface-2);color:var(--clr-text);border:1.5px solid var(--clr-border);" onclick="editProfile('${p.id}')">
+              <i class="ri-edit-line"></i> Edit
+            </button>
+            <button class="worker-delete-btn" onclick="deleteProfile('${p.id}','${escHtml(p.fullName)}')">
+              <i class="ri-delete-bin-6-line"></i>
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  TAB 3 — Kotkansiipi Approvals
+    // ══════════════════════════════════════════════════════════
+
+    let adminApprovalsByCol = {};
+    let adminColUnsubscribers = {};
+
+    window.approveEntry = async function (id, colName) {
+      try {
+        await updateDoc(doc(db, colName || 'workHours', id), { approvalStatus: 'approved', updatedAt: serverTimestamp() });
+        showAdminToast('Entry approved!', 'success');
+      } catch (err) {
+        console.error(err);
+        showAdminToast('Error approving entry.', 'error');
+      }
+    };
+
+    window.declineEntry = async function (id, colName) {
+      try {
+        await deleteDoc(doc(db, colName || 'workHours', id));
+        showAdminToast('Entry declined and deleted from database.', 'error');
+      } catch (err) {
+        console.error(err);
+        showAdminToast('Error declining entry.', 'error');
+      }
+    };
+
+    function listenAdminApprovalCol(colName) {
+      if (adminColUnsubscribers[colName]) return;
+      const q = query(collection(db, colName), orderBy('date', 'desc'));
+      adminColUnsubscribers[colName] = onSnapshot(q, snap => {
+        adminApprovalsByCol[colName] = snap.docs
+          .map(d => ({ id: d.id, _col: colName, ...d.data() }))
+          .filter(r => r.location === 'Kotkansiipi' && r.approvalStatus && r.approvalStatus !== 'declined');
+        const merged = Object.values(adminApprovalsByCol).flat();
+        merged.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        renderApprovals(merged);
+      });
+    }
+
+    function subscribeApprovals() {
+      listenAdminApprovalCol('workHours');
+      onSnapshot(collection(db, 'workers'), snap => {
+        snap.docs.forEach(d => {
+          const w = d.data();
+          if (w.username) listenAdminApprovalCol(`workHours_${w.username}`);
+        });
+      });
+    }
+
+    function renderApprovals(recs) {
+      const empty = document.getElementById('approvalsEmpty');
+      const table = document.getElementById('approvalsTable');
+      const tbody = document.getElementById('approvalsTbody');
+      const badge = document.getElementById('tabApprovalCount');
+
+      const pendingCount = recs.filter(r => r.approvalStatus === 'pending').length;
+      if (badge) {
+        if (pendingCount > 0) {
+          badge.textContent = pendingCount;
+          badge.style.display = 'inline-block';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+
+      if (!recs.length) {
+        empty.style.display = '';
+        table.style.display = 'none';
+        return;
+      }
+
+      empty.style.display = 'none';
+      table.style.display = '';
+
+      tbody.innerHTML = recs.map(r => {
+        const ci = r.checkIn || (r.checkInSkipState === 'no_check_in' ? 'No check-in' : 'Not provided');
+        const co = r.checkOut || '—';
+        let statusBadge = '';
+        if (r.approvalStatus === 'pending') {
+          statusBadge = `<span class="approval-badge pending"><i class="ri-time-line"></i> Needs Approval</span>`;
+        } else if (r.approvalStatus === 'approved') {
+          statusBadge = `<span class="approval-badge approved"><i class="ri-checkbox-circle-line"></i> Approved</span>`;
+        } else if (r.approvalStatus === 'declined') {
+          statusBadge = `<span class="approval-badge declined"><i class="ri-close-circle-line"></i> Declined</span>`;
+        }
+
+        return `
+        <tr>
+          <td style="font-weight:600;">${r.date || '—'}</td>
+          <td><strong>${escHtml(capitalizeWord(r.addedBy || 'worker'))}</strong></td>
+          <td style="font-size:13px;color:var(--clr-text-muted);">${ci} / ${co}</td>
+          <td><span class="hours-pill">${r.totalHours ? Number(r.totalHours).toFixed(2) + 'h' : '—'}</span></td>
+          <td style="max-width:160px;word-break:break-word;font-size:13px;">${r.note ? escHtml(r.note) : '—'}</td>
+          <td>${statusBadge}</td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="admin-create-btn" style="padding:6px 12px;font-size:12.5px;background:var(--clr-success);" onclick="approveEntry('${r.id}', '${escHtml(r._col || 'workHours')}')">
+                <i class="ri-check-line"></i> Approve
+              </button>
+              <button class="worker-delete-btn" style="padding:6px 12px;font-size:12.5px;" onclick="declineEntry('${r.id}', '${escHtml(r._col || 'workHours')}')">
+                <i class="ri-close-line"></i> Decline
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+      }).join('');
+    }
+
+    // ── Init ──────────────────────────────────────────────────
+    checkGate();
+  </script>
+</body>
+
+</html>

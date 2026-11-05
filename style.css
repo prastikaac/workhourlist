@@ -478,6 +478,15 @@ textarea {
   color: #a855f7;
 }
 
+.loc-5 .stat-icon {
+  background: rgba(14, 165, 233, 0.12);
+  color: var(--clr-info);
+}
+
+.loc-5 .stat-value {
+  color: var(--clr-info);
+}
+
 /* ── Card ── */
 .card {
   background: var(--clr-surface);
@@ -1129,11 +1138,6 @@ select.form-control {
   color: var(--clr-warning);
 }
 
-.badge-Rautkallionkatu {
-  background: rgba(14, 165, 233, 0.1);
-  color: var(--clr-info);
-}
-
 .badge-Kakoisvayla {
   background: rgba(239, 68, 68, 0.1);
   color: var(--clr-danger);
@@ -1147,6 +1151,11 @@ select.form-control {
 .badge-HouseCleaningPuistola {
   background: rgba(16, 185, 129, 0.1);
   color: var(--clr-success);
+}
+
+.badge-Riskilkuja {
+  background: rgba(14, 165, 233, 0.1);
+  color: var(--clr-info);
 }
 
 .hours-pill {
@@ -2327,4 +2336,273 @@ select.form-control {
   }
   .rec-quick-periods::-webkit-scrollbar { display: none; }
   .rec-qp-btn { flex-shrink: 0; padding: 6px 13px; font-size: 0.79rem; }
+}
+
+/* ── Login Overlay ── */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--clr-bg);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.login-overlay.hidden {
+  display: none;
+}
+
+.login-card {
+  background: var(--clr-surface);
+  border: 1.5px solid var(--clr-border);
+  border-radius: 24px;
+  box-shadow: var(--shadow-lg);
+  padding: 48px 44px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.login-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.login-logo-icon {
+  font-size: 28px;
+  color: var(--clr-primary);
+  background: rgba(99, 102, 241, 0.12);
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.login-logo-text {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--clr-text);
+}
+
+.login-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--clr-text);
+  margin-bottom: 6px;
+}
+
+.login-sub {
+  font-size: 13.5px;
+  color: var(--clr-text-muted);
+  margin-bottom: 28px;
+}
+
+.login-field {
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.login-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  margin-bottom: 7px;
+}
+
+.login-label i {
+  color: var(--clr-primary);
+  font-size: 14px;
+}
+
+.login-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--clr-surface-2);
+  border: 1.5px solid var(--clr-border);
+  border-radius: 10px;
+  font-size: 14.5px;
+  color: var(--clr-text);
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.login-input:focus {
+  border-color: var(--clr-primary);
+  background: var(--clr-surface);
+  box-shadow: 0 0 0 3px var(--clr-primary-glow);
+}
+
+.login-pw-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-pw-row .login-input {
+  padding-right: 44px;
+}
+
+.login-eye-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--clr-text-muted);
+  font-size: 18px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.login-eye-btn:hover {
+  color: var(--clr-primary);
+}
+
+.login-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 10px;
+  color: var(--clr-danger);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.login-error.hidden {
+  display: none;
+}
+
+.login-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--clr-primary);
+  color: #fff;
+  border: none;
+  border-radius: 11px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  margin-top: 8px;
+}
+
+.login-btn:hover {
+  background: var(--clr-primary-h);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+}
+
+.login-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Logout button (sidebar) ── */
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: var(--radius-sm);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all var(--transition);
+  margin-top: 8px;
+  font-family: var(--font);
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.logout-btn i {
+  font-size: 17px;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+/* ── Admin sidebar link ── */
+.admin-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: var(--radius-sm);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all var(--transition);
+  margin-top: 4px;
+  text-decoration: none;
+}
+
+.admin-sidebar-link:hover {
+  background: var(--sidebar-active-bg);
+  color: rgba(255,255,255,0.85);
+}
+
+.admin-sidebar-link i {
+  font-size: 17px;
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 36px 24px;
+  }
+}
+
+/* ── Approval Badges (Admin Only) ── */
+.approval-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.approval-badge.pending {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--clr-warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.approval-badge.approved {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--clr-success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.approval-badge.declined {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--clr-danger);
+  border: 1px solid rgba(239, 68, 68, 0.25);
 }
